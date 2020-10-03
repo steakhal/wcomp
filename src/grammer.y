@@ -11,30 +11,15 @@
 int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 }
 
-%token PROGRAM
-%token BEGIN_
-%token END
-%token BOOLEAN
-%token NATURAL
-%token READ
-%token WRITE
-%token IF
-%token THEN
-%token ELSE
-%token ENDIF
-%token WHILE
-%token FOR
-%token DO
-%token DONE
-%token TRUE
-%token FALSE
-%token ASSIGN
-%token DOTDOT
-%token LPAREN
-%token RPAREN
-%token COMMA
-%token QMARK
-%token COLON
+%token PROGRAM BEGIN_ END
+%token BOOLEAN NATURAL
+%token READ WRITE
+%token IF THEN ELSE ENDIF
+%token WHILE FOR DOTDOT DO DONE
+%token TRUE FALSE
+%token COMMA ASSIGN
+%token LPAREN RPAREN
+%token QMARK COLON
 %token <std::string> ID
 %token <std::string> NUM
 
