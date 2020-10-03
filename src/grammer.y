@@ -11,27 +11,27 @@
 int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 }
 
-%token PRG
-%token BEG
+%token PROGRAM
+%token BEGIN_
 %token END
-%token BOO
-%token NAT
-%token REA
-%token WRI
+%token BOOLEAN
+%token NATURAL
+%token READ
+%token WRITE
 %token IF
-%token THE
-%token ELS
-%token EIF
-%token WHI
+%token THEN
+%token ELSE
+%token ENDIF
+%token WHILE
 %token FOR
 %token DO
-%token DON
-%token TRU
-%token FAL
-%token ASN
+%token DONE
+%token TRUE
+%token FALSE
+%token ASSIGN
 %token DOTDOT
-%token OP
-%token CL
+%token LPAREN
+%token RPAREN
 %token COMMA
 %token QMARK
 %token COLON
@@ -41,7 +41,7 @@ int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 %left OR
 %left AND
 %left EQ
-%left LS GR LSE GRE
+%left LT GT LE GE
 %left ADD SUB
 %left MUL DIV MOD
 %precedence NOT
@@ -56,7 +56,7 @@ int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 %%
 
 start:
-    PRG ID declarations BEG commands END
+    PROGRAM ID declarations BEGIN_ commands END
     {
         type_check_commands($5);
         if(current_mode == compiler) {
@@ -75,12 +75,12 @@ declarations:
 ;
 
 declaration:
-    BOO ID
+    BOOLEAN ID
     {
         symbol(@1.begin.line, $2, boolean).declare();
     }
 |
-    NAT ID
+    NATURAL ID
     {
         symbol(@1.begin.line, $2, natural).declare();
     }
@@ -130,41 +130,41 @@ exprpack:
 ;
 
 command:
-    REA OP ID CL
+    READ LPAREN ID RPAREN
     {
         $$ = new read_instruction(@1.begin.line, $3);
     }
 |
-    WRI OP expression CL
+    WRITE LPAREN expression RPAREN
     {
         $$ = new write_instruction(@1.begin.line, $3);
     }
 |
-    ID ASN expression
+    ID ASSIGN expression
     {
         $$ = new assign_instruction(@2.begin.line, $1, $3);
     }
 |
-    idpack ASN exprpack
+    idpack ASSIGN exprpack
     {
         $$ = new simultan_assign_instruction(@2.begin.line, $1, $3);
     }
 |
-    IF expression THE commands EIF
+    IF expression THEN commands ENDIF
     {
         $$ = new if_instruction(@1.begin.line, $2, $4, 0);
     }
 |
-    IF expression THE commands ELS commands EIF
+    IF expression THEN commands ELSE commands ENDIF
     {
         $$ = new if_instruction(@1.begin.line, $2, $4, $6);
     }
 |
-    WHI expression DO commands DON
+    WHILE expression DO commands DONE
     {
         $$ = new while_instruction(@1.begin.line, $2, $4);
     }
-|   FOR ID ASN expression DOTDOT expression DO commands DON
+|   FOR ID ASSIGN expression DOTDOT expression DO commands DONE
     {
         $$ = new for_instruction(@1.begin.line, $2, $4, $6, $8);
     }
@@ -176,12 +176,12 @@ expression:
         $$ = new number_expression($1);
     }
 |
-    TRU
+    TRUE
     {
         $$ = new boolean_expression(true);
     }
 |
-    FAL
+    FALSE
     {
         $$ = new boolean_expression(false);
     }
@@ -221,22 +221,22 @@ expression:
         $$ = new binop_expression(@2.begin.line, "%", $1, $3);
     }
 |
-    expression LS expression
+    expression LT expression
     {
         $$ = new binop_expression(@2.begin.line, "<", $1, $3);
     }
 |
-    expression GR expression
+    expression GT expression
     {
         $$ = new binop_expression(@2.begin.line, ">", $1, $3);
     }
 |
-    expression LSE expression
+    expression LE expression
     {
         $$ = new binop_expression(@2.begin.line, "<=", $1, $3);
     }
 |
-    expression GRE expression
+    expression GE expression
     {
         $$ = new binop_expression(@2.begin.line, ">=", $1, $3);
     }
@@ -261,7 +261,7 @@ expression:
         $$ = new not_expression(@1.begin.line, "not", $2);
     }
 |
-    OP expression CL
+    LPAREN expression RPAREN
     {
         $$ = $2;
     }

@@ -1,56 +1,53 @@
-%option c++ noyywrap yylineno
+%option c++ noyywrap
 
 %{
 #include <iostream>
 #include <cstdlib>
-#include <list>
 #include "implementation.hh"
 #include "grammer.hpp"
-
-using namespace yy;
 %}
 
 %%
 
-program                     return parser::token::PRG;
-begin                       return parser::token::BEG;
-end                         return parser::token::END;
-boolean                     return parser::token::BOO;
-natural                     return parser::token::NAT;
-read                        return parser::token::REA;
-write                       return parser::token::WRI;
-if                          return parser::token::IF;
-then                        return parser::token::THE;
-else                        return parser::token::ELS;
-endif                       return parser::token::EIF;
-while                       return parser::token::WHI;
-for                         return parser::token::FOR;
-do                          return parser::token::DO;
-done                        return parser::token::DON;
-true                        return parser::token::TRU;
-false                       return parser::token::FAL;
-","                         return parser::token::COMMA;
-"?"                         return parser::token::QMARK;
-":"                         return parser::token::COLON;
-":="                        return parser::token::ASN;
-".."                        return parser::token::DOTDOT;
-"+"                         return parser::token::ADD;
-"-"                         return parser::token::SUB;
-"*"                         return parser::token::MUL;
-"/"                         return parser::token::DIV;
-"%"                         return parser::token::MOD;
-"<"                         return parser::token::LS;
-">"                         return parser::token::GR;
-"<="                        return parser::token::LSE;
-">="                        return parser::token::GRE;
-"="                         return parser::token::EQ;
-and                         return parser::token::AND;
-or                          return parser::token::OR;
-not                         return parser::token::NOT;
-"("                         return parser::token::OP;
-")"                         return parser::token::CL;
-[a-zA-Z_][a-zA-Z0-9_]*      return parser::token::ID;
-[0-9]+                      return parser::token::NUM;
+program                     return yy::parser::token::PROGRAM;
+begin                       return yy::parser::token::BEGIN_;
+end                         return yy::parser::token::END;
+boolean                     return yy::parser::token::BOOLEAN;
+natural                     return yy::parser::token::NATURAL;
+read                        return yy::parser::token::READ;
+write                       return yy::parser::token::WRITE;
+if                          return yy::parser::token::IF;
+then                        return yy::parser::token::THEN;
+else                        return yy::parser::token::ELSE;
+endif                       return yy::parser::token::ENDIF;
+while                       return yy::parser::token::WHILE;
+for                         return yy::parser::token::FOR;
+do                          return yy::parser::token::DO;
+done                        return yy::parser::token::DONE;
+true                        return yy::parser::token::TRUE;
+false                       return yy::parser::token::FALSE;
+","                         return yy::parser::token::COMMA;
+"?"                         return yy::parser::token::QMARK;
+":"                         return yy::parser::token::COLON;
+":="                        return yy::parser::token::ASSIGN;
+".."                        return yy::parser::token::DOTDOT;
+"+"                         return yy::parser::token::ADD;
+"-"                         return yy::parser::token::SUB;
+"*"                         return yy::parser::token::MUL;
+"/"                         return yy::parser::token::DIV;
+"%"                         return yy::parser::token::MOD;
+"<"                         return yy::parser::token::LT;
+">"                         return yy::parser::token::GT;
+"<="                        return yy::parser::token::LE;
+">="                        return yy::parser::token::GE;
+"="                         return yy::parser::token::EQ;
+and                         return yy::parser::token::AND;
+or                          return yy::parser::token::OR;
+not                         return yy::parser::token::NOT;
+"("                         return yy::parser::token::LPAREN;
+")"                         return yy::parser::token::RPAREN;
+[a-zA-Z_][a-zA-Z0-9_]*      return yy::parser::token::ID;
+[0-9]+                      return yy::parser::token::NUM;
 [ \t\n]+                    // Whitespaces skipped.
 #.*                         // Commens skipped.
-.                           { std::cerr << "Line " << lineno() << ": Unexpected character: '" << YYText() << "'." << std::endl; exit(1); }
+.                           { std::cerr << "Line " << lineno() << ": Unexpected character: '" << YYText() << "'.\n"; std::exit(1); }
