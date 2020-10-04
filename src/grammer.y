@@ -2,9 +2,12 @@
 %locations
 %define api.value.type variant
 
-%code top {
-#include "implementation.hh"
-#include <list>
+%code requires {
+  #include "implementation.hh"
+  #include <vector>
+  #include <memory>
+  #include <utility>
+  #include <variant>
 }
 
 %code provides {
@@ -31,12 +34,11 @@ int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 %left MUL DIV MOD
 %precedence NOT
 
-%type <expression*> expression
-%type <instruction*> command
-%type <std::list<instruction*>* > commands
-%type <std::list<std::string>* > idpack
-
-%type <std::list<expression*>* > exprpack
+%type <std::unique_ptr<expression>> expression
+%type <std::unique_ptr<instruction>> command
+%type <std::vector<std::unique_ptr<instruction>>> commands
+%type <std::vector<std::string>> idpack
+%type <std::vector<std::unique_ptr<expression>>> exprpack
 
 %%
 
@@ -48,7 +50,6 @@ start:
     } else {
       execute_commands($5);
     }
-    delete_commands($5);
   }
 ;
 
@@ -68,122 +69,122 @@ declaration:
 
 commands:
   /* empty */ {
-    $$ = new std::list<instruction*>();
+    $$ = std::vector<std::unique_ptr<instruction>>();
   }
 | commands command {
-    $1->push_back($2);
-    $$ = $1;
+    $1.push_back(std::move($2));
+    $$ = std::move($1);
   }
 ;
 
 idpack:
   ID {
-    auto *p = new std::list<std::string>();
-    p->push_back($1);
-    $$ = p;
+    std::vector<std::string> pack;
+    pack.push_back(std::move($1));
+    $$ = std::move(pack);
   }
 | idpack COMMA ID {
-    $1->push_back($3);
-    $$ = $1;
+    $1.push_back(std::move($3));
+    $$ = std::move($1);
   }
 ;
 
 exprpack:
   expression {
-    auto *p = new std::list<expression*>();
-    p->push_back($1);
-    $$ = p;
+    std::vector<std::unique_ptr<expression>> pack;
+    pack.push_back(std::move($1));
+    $$ = std::move(pack);
   }
 | exprpack COMMA expression {
-    $1->push_back($3);
-    $$ = $1;
+    $1.push_back(std::move($3));
+    $$ = std::move($1);
   }
 ;
 
 command:
   READ LPAREN ID RPAREN {
-    $$ = new read_instruction(@1.begin.line, $3);
+    $$ = std::make_unique<read_instruction>(@1.begin.line, std::move($3));
   }
 | WRITE LPAREN expression RPAREN {
-    $$ = new write_instruction(@1.begin.line, $3);
+    $$ = std::make_unique<write_instruction>(@1.begin.line, std::move($3));
   }
 | ID ASSIGN expression {
-    $$ = new assign_instruction(@2.begin.line, $1, $3);
+    $$ = std::make_unique<assign_instruction>(@2.begin.line, std::move($1), std::move($3));
   }
 | idpack ASSIGN exprpack {
-    $$ = new simultan_assign_instruction(@2.begin.line, $1, $3);
+    $$ = std::make_unique<simultan_assign_instruction>(@2.begin.line, std::move($1), std::move($3));
   }
 | IF expression THEN commands ENDIF {
-    $$ = new if_instruction(@1.begin.line, $2, $4, 0);
+    $$ = std::make_unique<if_instruction>(@1.begin.line, std::move($2), std::move($4), std::vector<std::unique_ptr<instruction>>());
   }
 | IF expression THEN commands ELSE commands ENDIF {
-    $$ = new if_instruction(@1.begin.line, $2, $4, $6);
+    $$ = std::make_unique<if_instruction>(@1.begin.line, std::move($2), std::move($4), std::move($6));
   }
 | WHILE expression DO commands DONE {
-    $$ = new while_instruction(@1.begin.line, $2, $4);
+    $$ = std::make_unique<while_instruction>(@1.begin.line, std::move($2), std::move($4));
   }
 | FOR ID ASSIGN expression DOTDOT expression DO commands DONE {
-    $$ = new for_instruction(@1.begin.line, $2, $4, $6, $8);
+    $$ = std::make_unique<for_instruction>(@1.begin.line, std::move($2), std::move($4), std::move($6), std::move($8));
   }
 ;
 
 expression:
   NUM {
-    $$ = new number_expression($1);
+    $$ = std::make_unique<number_expression>(std::move($1));
   }
 | TRUE {
-    $$ = new boolean_expression(true);
+    $$ = std::make_unique< boolean_expression>(true);
   }
 | FALSE {
-    $$ = new boolean_expression(false);
+    $$ = std::make_unique< boolean_expression>(false);
   }
 | ID {
-    $$ = new id_expression(@1.begin.line, $1);
+    $$ = std::make_unique< id_expression>(@1.begin.line, std::move($1));
   }
 | expression QMARK expression COLON expression {
-    $$ = new triop_expression(@2.begin.line, "?:", $1, $3, $5);
+    $$ = std::make_unique< triop_expression>(@2.begin.line, "?:", std::move($1), std::move($3), std::move($5));
   }
 | expression ADD expression {
-    $$ = new binop_expression(@2.begin.line, "+", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "+", std::move($1), std::move($3));
   }
 | expression SUB expression {
-    $$ = new binop_expression(@2.begin.line, "-", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "-", std::move($1), std::move($3));
   }
 | expression MUL expression {
-    $$ = new binop_expression(@2.begin.line, "*", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "*", std::move($1), std::move($3));
   }
 | expression DIV expression {
-    $$ = new binop_expression(@2.begin.line, "/", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "/", std::move($1), std::move($3));
   }
 | expression MOD expression {
-    $$ = new binop_expression(@2.begin.line, "%", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "%", std::move($1), std::move($3));
   }
 | expression LT expression {
-    $$ = new binop_expression(@2.begin.line, "<", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "<", std::move($1), std::move($3));
   }
 | expression GT expression {
-    $$ = new binop_expression(@2.begin.line, ">", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, ">", std::move($1), std::move($3));
   }
 | expression LE expression {
-    $$ = new binop_expression(@2.begin.line, "<=", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "<=", std::move($1), std::move($3));
   }
 | expression GE expression {
-    $$ = new binop_expression(@2.begin.line, ">=", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, ">=", std::move($1), std::move($3));
   }
 | expression AND expression {
-    $$ = new binop_expression(@2.begin.line, "and", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "and", std::move($1), std::move($3));
   }
 | expression OR expression {
-    $$ = new binop_expression(@2.begin.line, "or", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "or", std::move($1), std::move($3));
   }
 | expression EQ expression {
-    $$ = new binop_expression(@2.begin.line, "=", $1, $3);
+    $$ = std::make_unique< binop_expression>(@2.begin.line, "=", std::move($1), std::move($3));
   }
 | NOT expression {
-    $$ = new not_expression(@1.begin.line, "not", $2);
+    $$ = std::make_unique< not_expression>(@1.begin.line, "not", std::move($2));
   }
 | LPAREN expression RPAREN {
-    $$ = $2;
+    $$ = std::move($2);
   }
 ;
 

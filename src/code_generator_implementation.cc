@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include <sstream>
+#include <string_view>
 
 static std::string store_into_eax(unsigned value) {
   std::stringstream ss;
@@ -15,7 +16,7 @@ std::string number_expression::get_code() const {
 
 std::string boolean_expression::get_code() const {
   std::stringstream ss;
-  ss << "mov al," << (value ? 1 : 0) << std::endl;
+  ss << "mov al," << (value ? 1 : 0) << '\n';
   return ss.str();
 }
 
@@ -27,26 +28,13 @@ std::string next_label() {
 
 std::string symbol::get_code() {
   std::stringstream ss;
-  ss << label << ": resb " << get_size() << "\t; variable: " << name
-     << std::endl;
+  ss << label << ": resb " << get_size() << "\t; variable: " << name << '\n';
   return ss.str();
 }
 
-int symbol::get_size() {
-  if (symbol_type == boolean) {
-    return 1;
-  } else {
-    return 4;
-  }
-}
+int symbol::get_size() { return symbol_type == boolean ? 1 : 4; }
 
-std::string get_register(type t) {
-  if (t == boolean) {
-    return "al";
-  } else {
-    return "eax";
-  }
-}
+std::string_view get_register(type t) { return t == boolean ? "al" : "eax"; }
 
 std::string id_expression::get_code() const {
   if (symbol_table.count(name) == 0) {
@@ -58,50 +46,51 @@ std::string id_expression::get_code() const {
   return std::string("mov eax,[") + symbol_table[name].label + "]\n";
 }
 
-std::string operator_code(std::string op) {
+std::string operator_code(std::string_view op) {
   std::stringstream ss;
   if (op == "+") {
-    ss << "add eax,ecx" << std::endl;
+    ss << "add eax,ecx\n";
   } else if (op == "-") {
-    ss << "sub eax,ecx" << std::endl;
+    ss << "sub eax,ecx\n";
   } else if (op == "*") {
-    ss << "xor edx,edx" << std::endl;
-    ss << "mul ecx" << std::endl;
+    ss << "xor edx,edx\n";
+    ss << "mul ecx\n";
   } else if (op == "/") {
-    ss << "xor edx,edx" << std::endl;
-    ss << "div ecx" << std::endl;
+    ss << "xor edx,edx\n";
+    ss << "div ecx\n";
   } else if (op == "%") {
-    ss << "xor edx,edx" << std::endl;
-    ss << "div ecx" << std::endl;
-    ss << "mov eax,edx" << std::endl;
+    ss << "xor edx,edx\n";
+    ss << "div ecx\n";
+    ss << "mov eax,edx\n";
   } else if (op == "<") {
-    ss << "cmp eax,ecx" << std::endl;
-    ss << "mov al,0" << std::endl;
-    ss << "mov cx,1" << std::endl;
-    ss << "cmovb ax,cx" << std::endl;
+    ss << "cmp eax,ecx\n";
+    ss << "mov al,0\n";
+    ss << "mov cx,1\n";
+    ss << "cmovb ax,cx\n";
   } else if (op == "<=") {
-    ss << "cmp eax,ecx" << std::endl;
-    ss << "mov al,0" << std::endl;
-    ss << "mov cx,1" << std::endl;
-    ss << "cmovbe ax,cx" << std::endl;
+    ss << "cmp eax,ecx\n";
+    ss << "mov al,0\n";
+    ss << "mov cx,1\n";
+    ss << "cmovbe ax,cx\n";
   } else if (op == ">") {
-    ss << "cmp eax,ecx" << std::endl;
-    ss << "mov al,0" << std::endl;
-    ss << "mov cx,1" << std::endl;
-    ss << "cmova ax,cx" << std::endl;
+    ss << "cmp eax,ecx\n";
+    ss << "mov al,0\n";
+    ss << "mov cx,1\n";
+    ss << "cmova ax,cx\n";
   } else if (op == ">=") {
-    ss << "cmp eax,ecx" << std::endl;
-    ss << "mov al,0" << std::endl;
-    ss << "mov cx,1" << std::endl;
-    ss << "cmovae ax,cx" << std::endl;
+    ss << "cmp eax,ecx\n";
+    ss << "mov al,0\n";
+    ss << "mov cx,1\n";
+    ss << "cmovae ax,cx\n";
   } else if (op == "and") {
-    ss << "cmp al,1" << std::endl;
-    ss << "cmove ax,cx" << std::endl;
+    ss << "cmp al,1\n";
+    ss << "cmove ax,cx\n";
   } else if (op == "or") {
-    ss << "cmp al,0" << std::endl;
-    ss << "cmove ax,cx" << std::endl;
+    ss << "cmp al,0\n";
+    ss << "cmove ax,cx\n";
   } else {
-    error(-1, std::string("Bug: Unsupported binary operator: ") + op);
+    error(-1,
+          std::string("Bug: Unsupported binary operator: ") + std::string(op));
   }
   return ss.str();
 }
@@ -109,13 +98,13 @@ std::string operator_code(std::string op) {
 std::string eq_code(type t) {
   std::stringstream ss;
   if (t == natural) {
-    ss << "cmp eax,ecx" << std::endl;
+    ss << "cmp eax,ecx\n";
   } else {
-    ss << "cmp al,cl" << std::endl;
+    ss << "cmp al,cl\n";
   }
-  ss << "mov al,0" << std::endl;
-  ss << "mov cx,1" << std::endl;
-  ss << "cmove ax,cx" << std::endl;
+  ss << "mov al,0\n";
+  ss << "mov cx,1\n";
+  ss << "cmove ax,cx\n";
   return ss.str();
 }
 
@@ -126,11 +115,11 @@ std::string binop_expression::get_code() const {
   std::stringstream ss;
   ss << (left->is_constant_expression() ? store_into_eax(left->get_value())
                                         : left->get_code());
-  ss << "push eax" << std::endl;
+  ss << "push eax\n";
   ss << (right->is_constant_expression() ? store_into_eax(right->get_value())
                                          : right->get_code());
-  ss << "mov ecx,eax" << std::endl;
-  ss << "pop eax" << std::endl;
+  ss << "mov ecx,eax\n";
+  ss << "pop eax\n";
   ss << (op == "=" ? eq_code(left->get_type()) : operator_code(op));
   return ss.str();
 }
@@ -151,15 +140,15 @@ std::string triop_expression::get_code() const {
                                            : right->get_code();
   }
   ss << cond->get_code();
-  ss << "cmp al,1" << std::endl;
-  ss << "jne near " << else_label << std::endl;
+  ss << "cmp al,1\n";
+  ss << "jne near " << else_label << '\n';
   ss << (left->is_constant_expression() ? store_into_eax(left->get_value())
                                         : left->get_code());
-  ss << "jmp " << end_label << std::endl;
-  ss << else_label << ":" << std::endl;
+  ss << "jmp " << end_label << '\n';
+  ss << else_label << ":\n";
   ss << right->is_constant_expression() ? store_into_eax(right->get_value())
                                         : right->get_code();
-  ss << end_label << ":" << std::endl;
+  ss << end_label << ":\n";
   return ss.str();
 }
 
@@ -169,7 +158,7 @@ std::string not_expression::get_code() const {
 
   std::stringstream ss;
   ss << operand->get_code();
-  ss << "xor al,1" << std::endl;
+  ss << "xor al,1\n";
   return ss.str();
 }
 
@@ -183,7 +172,7 @@ std::string assign_instruction::get_code() {
   std::stringstream ss;
   ss << right->get_code();
   ss << "mov [" + symbol_table[left].label + "],"
-     << get_register(symbol_table[left].symbol_type) << std::endl;
+     << get_register(symbol_table[left].symbol_type) << '\n';
   return ss.str();
 }
 
@@ -191,45 +180,40 @@ std::string simultan_assign_instruction::get_code() {
   // TODO: Implement constant folding.
 
   std::stringstream ss;
-  for (auto *expr : *right) {
+  for (const auto &expr : right) {
     ss << expr->get_code();
     ss << "push eax\n";
   }
-  for (auto it = left->rbegin(); it != left->rend(); ++it) {
+  for (auto it = left.rbegin(); it != left.rend(); ++it) {
     auto &sym = symbol_table[*it];
     ss << "pop eax\n";
-    ss << "mov [" + sym.label + "]," << get_register(sym.symbol_type)
-       << std::endl;
+    ss << "mov [" + sym.label + "]," << get_register(sym.symbol_type) << '\n';
   }
   return ss.str();
 }
 
-std::string get_type_name(type t) {
-  if (t == boolean) {
-    return "boolean";
-  } else {
-    return "natural";
-  }
+std::string_view get_type_name(type t) {
+  return t == boolean ? "boolean" : "natural";
 }
 
 std::string read_instruction::get_code() {
   type t = symbol_table[id].symbol_type;
   std::stringstream ss;
-  ss << "call read_" << get_type_name(t) << std::endl;
-  ss << "mov [" << symbol_table[id].label << "]," << get_register(t)
-     << std::endl;
+  ss << "call read_" << get_type_name(t) << '\n';
+  ss << "mov [" << symbol_table[id].label << "]," << get_register(t) << '\n';
   return ss.str();
 }
 
 std::string write_instruction::get_code() {
+  const auto type = value->get_type();
   std::stringstream ss;
-  ss << exp->get_code();
-  if (exp_type == boolean) {
-    ss << "and eax,1" << std::endl;
+  ss << value->get_code();
+  if (type == boolean) {
+    ss << "and eax,1\n";
   }
-  ss << "push eax" << std::endl;
-  ss << "call write_" << get_type_name(exp_type) << std::endl;
-  ss << "add esp,4" << std::endl;
+  ss << "push eax\n";
+  ss << "call write_" << get_type_name(type) << '\n';
+  ss << "add esp,4\n";
   return ss.str();
 }
 
@@ -245,13 +229,13 @@ std::string if_instruction::get_code() {
   std::string end_label = next_label();
   std::stringstream ss;
   ss << condition->get_code();
-  ss << "cmp al,1" << std::endl;
-  ss << "jne near " << else_label << std::endl;
+  ss << "cmp al,1\n";
+  ss << "jne near " << else_label << '\n';
   generate_code_of_commands(ss, true_branch);
-  ss << "jmp " << end_label << std::endl;
-  ss << else_label << ":" << std::endl;
+  ss << "jmp " << end_label << '\n';
+  ss << else_label << ":\n";
   generate_code_of_commands(ss, false_branch);
-  ss << end_label << ":" << std::endl;
+  ss << end_label << ":\n";
   return ss.str();
 }
 
@@ -264,13 +248,13 @@ std::string while_instruction::get_code() {
   std::string begin_label = next_label();
   std::string end_label = next_label();
   std::stringstream ss;
-  ss << begin_label << ":" << std::endl;
+  ss << begin_label << ":\n";
   ss << condition->get_code();
-  ss << "cmp al,1" << std::endl;
-  ss << "jne near " << end_label << std::endl;
+  ss << "cmp al,1\n";
+  ss << "jne near " << end_label << '\n';
   generate_code_of_commands(ss, body);
-  ss << "jmp " << begin_label << std::endl;
-  ss << end_label << ":" << std::endl;
+  ss << "jmp " << begin_label << '\n';
+  ss << end_label << ":\n";
   return ss.str();
 }
 
@@ -307,34 +291,27 @@ std::string for_instruction::get_code() {
   return ss.str();
 }
 
-void generate_code_of_commands(std::ostream &out,
-                               std::list<instruction *> *commands) {
-  if (!commands) {
-    return;
-  }
-
-  std::list<instruction *>::iterator it;
-  for (it = commands->begin(); it != commands->end(); ++it) {
-    out << (*it)->get_code();
+void generate_code_of_commands(
+    std::ostream &out,
+    const std::vector<std::unique_ptr<instruction>> &commands) {
+  for (const auto &command : commands) {
+    out << command->get_code();
   }
 }
 
-void generate_code(std::list<instruction *> *commands) {
-  std::cout << "global main" << std::endl;
-  std::cout << "extern write_natural" << std::endl;
-  std::cout << "extern read_natural" << std::endl;
-  std::cout << "extern write_boolean" << std::endl;
-  std::cout << "extern read_boolean" << std::endl;
-  std::cout << std::endl;
-  std::cout << "section .bss" << std::endl;
+void generate_code(const std::vector<std::unique_ptr<instruction>> &commands) {
+  std::cout << "global main\n"
+               "extern write_natural\n"
+               "extern read_natural\n"
+               "extern write_boolean\n"
+               "extern read_boolean\n\n"
+               "section .bss\n";
   std::map<std::string, symbol>::iterator it;
   for (it = symbol_table.begin(); it != symbol_table.end(); ++it) {
     std::cout << it->second.get_code();
   }
-  std::cout << std::endl;
-  std::cout << "section .text" << std::endl;
-  std::cout << "main:" << std::endl;
+  std::cout << "\nsection .text\nmain:\n";
   generate_code_of_commands(std::cout, commands);
-  std::cout << "xor eax,eax" << std::endl;
-  std::cout << "ret" << std::endl;
+  std::cout << "xor eax,eax\n";
+  std::cout << "ret\n";
 }

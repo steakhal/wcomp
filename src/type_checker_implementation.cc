@@ -23,7 +23,7 @@ type id_expression::get_type() const {
   return symbol_table[name].symbol_type;
 }
 
-type operand_type(std::string op) {
+type operand_type(std::string_view op) {
   if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%" ||
       op == "<" || op == ">" || op == "<=" || op == ">=") {
     return natural;
@@ -32,7 +32,7 @@ type operand_type(std::string op) {
   }
 }
 
-type return_type(std::string op) {
+type return_type(std::string_view op) {
   if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
     return natural;
   } else {
@@ -80,50 +80,50 @@ type not_expression::get_type() const {
 
 void assign_instruction::type_check() {
   if (symbol_table.count(left) == 0) {
-    error(line, std::string("Undefined variable: ") + left);
+    error(get_line(), std::string("Undefined variable: ") + left);
   }
   if (symbol_table[left].symbol_type != right->get_type()) {
-    error(line,
+    error(get_line(),
           "Left and right hand sides of assignment are of different types.");
   }
 }
 
 void simultan_assign_instruction::type_check() {
-  if (left->size() != right->size()) {
+  if (left.size() != right.size()) {
     std::stringstream ss;
-    ss << "Can not assign " << right->size() << " values to " << left->size()
+    ss << "Can not assign " << right.size() << " values to " << left.size()
        << " variables.";
-    error(line, ss.str());
+    error(get_line(), ss.str());
   }
 
-  for (const std::string &id : *left) {
+  for (const auto &id : left) {
     if (symbol_table.count(id) == 0) {
-      error(line, std::string("Undefined variable: ") + id);
+      error(get_line(), std::string("Undefined variable: ") + id);
     }
   }
 
-  auto it1 = left->begin();
-  auto it2 = right->begin();
-  for (; it1 != left->end(); ++it1, ++it2) {
+  auto it1 = left.begin();
+  auto it2 = right.begin();
+  for (; it1 != left.end(); ++it1, ++it2) {
     if (symbol_table[*it1].symbol_type != (*it2)->get_type()) {
       // TODO: Improve error message.
-      error(line, "Left and right hand sides of simultan assignment are of "
-                  "different types.");
+      error(get_line(), "Left and right hand sides of simultan assignment are "
+                        "of different types.");
     }
   }
 }
 
 void read_instruction::type_check() {
   if (symbol_table.count(id) == 0) {
-    error(line, std::string("Undefined variable: ") + id);
+    error(get_line(), std::string("Undefined variable: ") + id);
   }
 }
 
-void write_instruction::type_check() { exp_type = exp->get_type(); }
+void write_instruction::type_check() {}
 
 void if_instruction::type_check() {
   if (condition->get_type() != boolean) {
-    error(line, "Condition of 'if' instruction is not boolean.");
+    error(get_line(), "Condition of 'if' instruction is not boolean.");
   }
   type_check_commands(true_branch);
   type_check_commands(false_branch);
@@ -131,34 +131,30 @@ void if_instruction::type_check() {
 
 void while_instruction::type_check() {
   if (condition->get_type() != boolean) {
-    error(line, "Condition of 'while' instruction is not boolean.");
+    error(get_line(), "Condition of 'while' instruction is not boolean.");
   }
   type_check_commands(body);
 }
 
 void for_instruction::type_check() {
   if (symbol_table.count(loopvar) == 0) {
-    error(line, std::string("Undefined variable: ") + loopvar);
+    error(get_line(), std::string("Undefined variable: ") + loopvar);
   }
   if (symbol_table[loopvar].symbol_type != natural) {
-    error(line, "The loop variable must have natural type.");
+    error(get_line(), "The loop variable must have natural type.");
   }
   if (first->get_type() != natural) {
-    error(line, "Begin of the range of 'for' instruction is not natural.");
+    error(get_line(),
+          "Begin of the range of 'for' instruction is not natural.");
   }
   if (last->get_type() != natural) {
-    error(line, "End of the range of 'for' instruction is not natural.");
+    error(get_line(), "End of the range of 'for' instruction is not natural.");
   }
   type_check_commands(body);
 }
 
-void type_check_commands(std::list<instruction *> *commands) {
-  if (!commands) {
-    return;
-  }
-
-  std::list<instruction *>::iterator it;
-  for (it = commands->begin(); it != commands->end(); ++it) {
-    (*it)->type_check();
-  }
+void type_check_commands(
+    const std::vector<std::unique_ptr<instruction>> &commands) {
+  for (const auto &command : commands)
+    command->type_check();
 }

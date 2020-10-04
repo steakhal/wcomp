@@ -17,14 +17,13 @@ bool boolean_expression::is_constant_expression() const { return true; }
 unsigned boolean_expression::get_value() const { return (unsigned)value; }
 
 bool id_expression::is_constant_expression() const {
-  return value_table.count(
-      name); // If we have a constant value associated with it, true.
+  // If we have a constant value associated with it, true.
+  return value_table.count(name);
 }
 
 unsigned id_expression::get_value() const {
-  if (value_table.count(name) == 0) {
+  if (value_table.count(name) == 0)
     error(line, std::string("Variable has not been initialized: ") + name);
-  }
   return value_table[name];
 }
 
@@ -33,8 +32,8 @@ bool binop_expression::is_constant_expression() const {
 }
 
 unsigned binop_expression::get_value() const {
-  int left_value = left->get_value();
-  int right_value = right->get_value();
+  unsigned left_value = left->get_value();
+  unsigned right_value = right->get_value();
   if (op == "+") {
     return left_value + right_value;
   } else if (op == "-") {
@@ -78,20 +77,20 @@ bool not_expression::is_constant_expression() const {
 }
 
 unsigned not_expression::get_value() const {
-  return !(bool)(operand->get_value());
+  return !static_cast<bool>(operand->get_value());
 }
 
 void assign_instruction::execute() { value_table[left] = right->get_value(); }
 
 void simultan_assign_instruction::execute() {
   std::vector<unsigned> tmps;
-  tmps.reserve(right->size());
-  for (auto *expr : *right) {
+  tmps.reserve(right.size());
+  for (const auto &expr : right) {
     tmps.push_back(expr->get_value());
   }
 
   int i = 0;
-  for (const auto &vname : *left) {
+  for (const auto &vname : left) {
     value_table[vname] = tmps[i++];
   }
 }
@@ -105,39 +104,25 @@ void read_instruction::execute() {
     ss >> input;
     value_table[id] = input;
   } else if (symbol_table[id].symbol_type == boolean) {
-    if (input_line == "true") {
-      value_table[id] = 1;
-    } else {
-      value_table[id] = 0;
-    }
+    value_table[id] = input_line == "true";
   }
 }
 
 void write_instruction::execute() {
-  if (exp_type == natural) {
-    std::cout << exp->get_value() << std::endl;
-  } else if (exp_type == boolean) {
-    if (exp->get_value()) {
-      std::cout << "true" << std::endl;
-    } else {
-      std::cout << "false" << std::endl;
-    }
-  }
+  const auto val = value->get_value();
+  if (value->get_type() == natural)
+    std::cout << val << '\n';
+  else
+    std::cout << (val ? "true\n" : "false\n");
 }
 
 void if_instruction::execute() {
-  if (condition->get_value()) {
-    execute_commands(true_branch);
-  } else {
-    execute_commands(false_branch);
-  }
+  execute_commands(condition->get_value() ? true_branch : false_branch);
 }
 
 void while_instruction::execute() {
-  std::list<instruction *>::iterator it;
-  while (condition->get_value()) {
+  while (condition->get_value())
     execute_commands(body);
-  }
 }
 
 void for_instruction::execute() {
@@ -147,13 +132,8 @@ void for_instruction::execute() {
   }
 }
 
-void execute_commands(std::list<instruction *> *commands) {
-  if (!commands) {
-    return;
-  }
-
-  std::list<instruction *>::iterator it;
-  for (it = commands->begin(); it != commands->end(); ++it) {
-    (*it)->execute();
-  }
+void execute_commands(
+    const std::vector<std::unique_ptr<instruction>> &commands) {
+  for (const auto &command : commands)
+    command->execute();
 }
