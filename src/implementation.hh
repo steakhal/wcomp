@@ -14,7 +14,7 @@ extern mode current_mode;
 
 enum type { boolean, natural };
 
-void error(int line, const std::string_view &msg);
+[[noreturn]] void error(int line, const std::string_view &msg);
 
 class expression {
 public:
@@ -27,11 +27,7 @@ public:
 
 class number_expression : public expression {
 public:
-  number_expression(std::string_view text) {
-    std::stringstream ss;
-    ss << text;
-    ss >> value;
-  }
+  number_expression(unsigned value) : value(value) {}
   ~number_expression() noexcept override;
   type get_type() const;
   bool is_constant_expression() const;

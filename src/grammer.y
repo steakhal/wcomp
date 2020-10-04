@@ -8,6 +8,7 @@
   #include <memory>
   #include <utility>
   #include <variant>
+  #include <sstream>
 }
 
 %code provides {
@@ -130,7 +131,10 @@ command:
 
 expression:
   NUM {
-    $$ = std::make_unique<number_expression>(std::move($1));
+    std::stringstream ss($1);
+    unsigned value;
+    ss >> value;
+    $$ = std::make_unique<number_expression>(value);
   }
 | TRUE {
     $$ = std::make_unique< boolean_expression>(true);

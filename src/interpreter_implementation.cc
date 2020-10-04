@@ -58,9 +58,8 @@ unsigned binop_expression::get_value() const {
     return left_value || right_value;
   } else if (op == "=") {
     return left_value == right_value;
-  } else {
-    error(line, std::string("Unknown operator: ") + op);
   }
+  error(line, std::string("Unknown operator: ") + op);
 }
 
 bool triop_expression::is_constant_expression() const {
