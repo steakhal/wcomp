@@ -7,8 +7,7 @@
   #include <vector>
   #include <memory>
   #include <utility>
-  #include <variant>
-  #include <sstream>
+  #include <cstdlib>
 }
 
 %code provides {
@@ -131,61 +130,58 @@ command:
 
 expression:
   NUM {
-    std::stringstream ss($1);
-    unsigned value;
-    ss >> value;
-    $$ = std::make_unique<number_expression>(value);
+    $$ = std::make_unique<number_expression>(std::atoi($1.c_str()));
   }
 | TRUE {
-    $$ = std::make_unique< boolean_expression>(true);
+    $$ = std::make_unique<boolean_expression>(true);
   }
 | FALSE {
-    $$ = std::make_unique< boolean_expression>(false);
+    $$ = std::make_unique<boolean_expression>(false);
   }
 | ID {
-    $$ = std::make_unique< id_expression>(@1.begin.line, std::move($1));
+    $$ = std::make_unique<id_expression>(@1.begin.line, std::move($1));
   }
 | expression QMARK expression COLON expression {
-    $$ = std::make_unique< triop_expression>(@2.begin.line, "?:", std::move($1), std::move($3), std::move($5));
+    $$ = std::make_unique<triop_expression>(@2.begin.line, "?:", std::move($1), std::move($3), std::move($5));
   }
 | expression ADD expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "+", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "+", std::move($1), std::move($3));
   }
 | expression SUB expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "-", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "-", std::move($1), std::move($3));
   }
 | expression MUL expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "*", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "*", std::move($1), std::move($3));
   }
 | expression DIV expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "/", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "/", std::move($1), std::move($3));
   }
 | expression MOD expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "%", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "%", std::move($1), std::move($3));
   }
 | expression LT expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "<", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "<", std::move($1), std::move($3));
   }
 | expression GT expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, ">", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, ">", std::move($1), std::move($3));
   }
 | expression LE expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "<=", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "<=", std::move($1), std::move($3));
   }
 | expression GE expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, ">=", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, ">=", std::move($1), std::move($3));
   }
 | expression AND expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "and", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "and", std::move($1), std::move($3));
   }
 | expression OR expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "or", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "or", std::move($1), std::move($3));
   }
 | expression EQ expression {
-    $$ = std::make_unique< binop_expression>(@2.begin.line, "=", std::move($1), std::move($3));
+    $$ = std::make_unique<binop_expression>(@2.begin.line, "=", std::move($1), std::move($3));
   }
 | NOT expression {
-    $$ = std::make_unique< not_expression>(@1.begin.line, "not", std::move($2));
+    $$ = std::make_unique<not_expression>(@1.begin.line, "not", std::move($2));
   }
 | LPAREN expression RPAREN {
     $$ = std::move($2);
