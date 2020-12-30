@@ -14,6 +14,8 @@
 int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 }
 
+%parse-param {commands_t &ast}
+
 %token PROGRAM BEGIN_ END
 %token BOOLEAN NATURAL
 %token READ WRITE

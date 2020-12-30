@@ -252,19 +252,17 @@ private:
   std::vector<std::unique_ptr<instruction>> body;
 };
 
-void type_check_commands(
-    const std::vector<std::unique_ptr<instruction>> &commands);
+using commands_t = std::vector<std::unique_ptr<instruction>>;
 
-void generate_code_of_commands(
-    std::ostream &out,
-    const std::vector<std::unique_ptr<instruction>> &commands);
+void type_check_commands(const commands_t &commands);
 
-void execute_commands(
-    const std::vector<std::unique_ptr<instruction>> &commands);
+void generate_code_of_commands(std::ostream &out, const commands_t &commands);
 
-void delete_commands(const std::vector<std::unique_ptr<instruction>> &commands);
+void execute_commands(const commands_t &commands);
 
-void generate_code(const std::vector<std::unique_ptr<instruction>> &commands);
+void delete_commands(const commands_t &commands);
+
+void generate_code(const commands_t &commands);
 
 extern bool do_constant_propagation;
 

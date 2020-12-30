@@ -128,8 +128,7 @@ void for_instruction::type_check() {
   type_check_commands(body);
 }
 
-void type_check_commands(
-    const std::vector<std::unique_ptr<instruction>> &commands) {
+void type_check_commands(const commands_t &commands) {
   for (const auto &command : commands)
     command->type_check();
 }

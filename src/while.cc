@@ -1,11 +1,11 @@
-#include "implementation.hh"
 #include "grammer.hpp"
+#include "implementation.hh"
 
 #include <FlexLexer.h>
 
-#include <iostream>
-#include <fstream>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <list>
 
 yyFlexLexer *lexer;
@@ -46,9 +46,16 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  lexer = new yyFlexLexer(&input);
-  yy::parser parser;
-  parser.parse();
-  delete lexer;
+  const auto build_ast_from = [](std::istream &is) {
+    commands_t ast;
+    std::unique_ptr lexer = std::make_unique<yyFlexLexer>(&is);
+    ::lexer = lexer.get();
+    yy::parser parser{ast};
+    parser.parse();
+    ::lexer = nullptr;
+    return ast;
+  };
+
+  commands_t ast = build_ast_from(input);
   return 0;
 }
