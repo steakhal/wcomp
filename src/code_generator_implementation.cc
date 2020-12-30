@@ -113,14 +113,14 @@ std::string binop_expression::get_code() const {
     return store_into_eax(get_value());
 
   std::stringstream ss;
-  ss << (left->is_constant_expression() ? store_into_eax(left->get_value())
-                                        : left->get_code());
+  ss << (::is_constant_expression(*left) ? store_into_eax(::get_value(*left))
+                                         : ::get_code(*left));
   ss << "push eax\n";
-  ss << (right->is_constant_expression() ? store_into_eax(right->get_value())
-                                         : right->get_code());
+  ss << (::is_constant_expression(*right) ? store_into_eax(::get_value(*right))
+                                          : ::get_code(*right));
   ss << "mov ecx,eax\n";
   ss << "pop eax\n";
-  ss << (op == "=" ? eq_code(left->get_type()) : operator_code(op));
+  ss << (op == "=" ? eq_code(::get_type(*left)) : operator_code(op));
   return ss.str();
 }
 
@@ -129,62 +129,62 @@ std::string not_expression::get_code() const {
     return store_into_eax(get_value());
 
   std::stringstream ss;
-  ss << operand->get_code();
+  ss << ::get_code(*operand);
   ss << "xor al,1\n";
   return ss.str();
 }
 
 std::string assign_instruction::get_code() {
-  if (right->is_constant_expression() && do_constant_propagation) {
+  if (::is_constant_expression(*right) && do_constant_propagation) {
     execute(); // Store the evaluated value, so this variable becomes a constant
                // expression.
-    return store_into_eax(right->get_value());
+    return store_into_eax(::get_value(*right));
   }
 
   std::stringstream ss;
-  ss << right->get_code();
+  ss << ::get_code(*right);
   ss << "mov [" + symbol_table[left].label + "],"
      << get_register(symbol_table[left].symbol_type) << '\n';
   return ss.str();
 }
 
-std::string_view get_type_name(type t) {
+static std::string_view get_type_name(type t) {
   return t == boolean ? "boolean" : "natural";
 }
 
 std::string read_instruction::get_code() {
-  type t = symbol_table[id].symbol_type;
+  const type ty = symbol_table[id].symbol_type;
   std::stringstream ss;
-  ss << "call read_" << get_type_name(t) << '\n';
-  ss << "mov [" << symbol_table[id].label << "]," << get_register(t) << '\n';
+  ss << "call read_" << get_type_name(ty) << '\n';
+  ss << "mov [" << symbol_table[id].label << "]," << get_register(ty) << '\n';
   return ss.str();
 }
 
 std::string write_instruction::get_code() {
-  const auto type = value->get_type();
+  const type ty = ::get_type(*value);
   std::stringstream ss;
-  ss << value->get_code();
-  if (type == boolean) {
+  ss << ::get_code(*value);
+  if (ty == boolean) {
     ss << "and eax,1\n";
   }
   ss << "push eax\n";
-  ss << "call write_" << get_type_name(type) << '\n';
+  ss << "call write_" << get_type_name(ty) << '\n';
   ss << "add esp,4\n";
   return ss.str();
 }
 
 std::string if_instruction::get_code() {
-  if (condition->is_constant_expression()) {
+  if (::is_constant_expression(*condition)) {
     std::stringstream ss;
-    generate_code_of_commands(ss, condition->get_value() ? true_branch
-                                                         : false_branch);
+    generate_code_of_commands(ss, ::get_value(*condition) ? true_branch
+                                                          : false_branch);
     return ss.str();
   }
 
   std::string else_label = next_label();
   std::string end_label = next_label();
   std::stringstream ss;
-  ss << condition->get_code();
+  ss << ::get_code(*condition);
   ss << "cmp al,1\n";
   ss << "jne near " << else_label << '\n';
   generate_code_of_commands(ss, true_branch);
@@ -197,7 +197,8 @@ std::string if_instruction::get_code() {
 
 std::string while_instruction::get_code() {
   // Elide the loop completely if possible.
-  if (condition->is_constant_expression() && condition->get_value() == false) {
+  if (::is_constant_expression(*condition) &&
+      ::get_value(*condition) == false) {
     return "";
   }
   save_and_restore<bool> Guard(do_constant_propagation, false);
@@ -205,7 +206,7 @@ std::string while_instruction::get_code() {
   std::string end_label = next_label();
   std::stringstream ss;
   ss << begin_label << ":\n";
-  ss << condition->get_code();
+  ss << ::get_code(*condition);
   ss << "cmp al,1\n";
   ss << "jne near " << end_label << '\n';
   generate_code_of_commands(ss, body);
@@ -222,7 +223,7 @@ std::string for_instruction::get_code() {
   std::string end_label = next_label();
 
   // calculate first and store to i
-  ss << first->get_code();
+  ss << ::get_code(*first);
   ss << "mov [" + symbol_table[loopvar].label + "],eax\n";
   ss << "dec eax\n";
 
@@ -231,7 +232,7 @@ std::string for_instruction::get_code() {
   ss << "mov [" + symbol_table[loopvar].label + "],eax\n"; // store i
   ss << "push eax\n";                                      // push i
 
-  ss << last->get_code();
+  ss << ::get_code(*last);
   ss << "mov ecx,eax\n"; // store end into ecx
   ss << "pop eax\n";     // pop i into eax
 
@@ -247,15 +248,13 @@ std::string for_instruction::get_code() {
   return ss.str();
 }
 
-void generate_code_of_commands(
-    std::ostream &out,
-    const std::vector<std::unique_ptr<instruction>> &commands) {
+void generate_code_of_commands(std::ostream &out, const commands_t &commands) {
   for (const auto &command : commands) {
     out << command->get_code();
   }
 }
 
-void generate_code(const std::vector<std::unique_ptr<instruction>> &commands) {
+void generate_code(const commands_t &commands) {
   std::cout << "global main\n"
                "extern write_natural\n"
                "extern read_natural\n"

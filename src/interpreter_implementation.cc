@@ -28,12 +28,12 @@ unsigned id_expression::get_value() const {
 }
 
 bool binop_expression::is_constant_expression() const {
-  return left->is_constant_expression() && right->is_constant_expression();
+  return ::is_constant_expression(*left) && ::is_constant_expression(*right);
 }
 
 unsigned binop_expression::get_value() const {
-  unsigned left_value = left->get_value();
-  unsigned right_value = right->get_value();
+  unsigned left_value = ::get_value(*left);
+  unsigned right_value = ::get_value(*right);
   if (op == "+") {
     return left_value + right_value;
   } else if (op == "-") {
@@ -63,14 +63,14 @@ unsigned binop_expression::get_value() const {
 }
 
 bool not_expression::is_constant_expression() const {
-  return operand->is_constant_expression();
+  return ::is_constant_expression(*operand);
 }
 
 unsigned not_expression::get_value() const {
-  return !static_cast<bool>(operand->get_value());
+  return !static_cast<bool>(::get_value(*operand));
 }
 
-void assign_instruction::execute() { value_table[left] = right->get_value(); }
+void assign_instruction::execute() { value_table[left] = ::get_value(*right); }
 
 void read_instruction::execute() {
   std::string input_line;
@@ -86,31 +86,30 @@ void read_instruction::execute() {
 }
 
 void write_instruction::execute() {
-  const auto val = value->get_value();
-  if (value->get_type() == natural)
+  const auto val = ::get_value(*value);
+  if (get_type(*value) == natural)
     std::cout << val << '\n';
   else
     std::cout << (val ? "true\n" : "false\n");
 }
 
 void if_instruction::execute() {
-  execute_commands(condition->get_value() ? true_branch : false_branch);
+  execute_commands(::get_value(*condition) ? true_branch : false_branch);
 }
 
 void while_instruction::execute() {
-  while (condition->get_value())
+  while (::get_value(*condition))
     execute_commands(body);
 }
 
 void for_instruction::execute() {
   unsigned &var = value_table[loopvar];
-  for (var = first->get_value(); var < last->get_value(); ++var) {
+  for (var = ::get_value(*first); var < ::get_value(*last); ++var) {
     execute_commands(body);
   }
 }
 
-void execute_commands(
-    const std::vector<std::unique_ptr<instruction>> &commands) {
+void execute_commands(const commands_t &commands) {
   for (const auto &command : commands)
     command->execute();
 }

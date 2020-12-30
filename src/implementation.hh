@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 enum mode { compiler, interpreter };
@@ -16,19 +17,19 @@ enum type { boolean, natural };
 
 [[noreturn]] void error(int line, const std::string_view &msg);
 
-class expression {
-public:
-  virtual type get_type() const = 0;
-  virtual ~expression() noexcept = 0;
-  virtual bool is_constant_expression() const = 0;
-  virtual std::string get_code() const = 0;
-  virtual unsigned get_value() const = 0;
-};
+class number_expression;
+class boolean_expression;
+class id_expression;
+class binop_expression;
+class not_expression;
 
-class number_expression : public expression {
+using expression =
+    std::variant<number_expression, boolean_expression, id_expression,
+                 binop_expression, not_expression>;
+
+class number_expression {
 public:
-  number_expression(unsigned value) : value(value) {}
-  ~number_expression() noexcept override;
+  explicit number_expression(unsigned value) : value(value) {}
   type get_type() const;
   bool is_constant_expression() const;
   std::string get_code() const;
@@ -38,10 +39,9 @@ private:
   unsigned value;
 };
 
-class boolean_expression : public expression {
+class boolean_expression {
 public:
-  boolean_expression(bool value) : value(value) {}
-  ~boolean_expression() noexcept override;
+  explicit boolean_expression(bool value) : value(value) {}
   type get_type() const;
   bool is_constant_expression() const;
   std::string get_code() const;
@@ -72,11 +72,10 @@ struct symbol {
 extern std::map<std::string, symbol> symbol_table;
 extern std::map<std::string, unsigned> value_table;
 
-class id_expression : public expression {
+class id_expression {
 public:
   id_expression(int line, std::string name)
       : line(line), name(std::move(name)) {}
-  ~id_expression() noexcept override;
   type get_type() const;
   bool is_constant_expression() const;
   std::string get_code() const;
@@ -87,13 +86,12 @@ private:
   std::string name;
 };
 
-class binop_expression : public expression {
+class binop_expression {
 public:
   binop_expression(int line, std::string op, std::unique_ptr<expression> left,
                    std::unique_ptr<expression> right)
       : line(line), op(std::move(op)), left(std::move(left)),
         right(std::move(right)) {}
-  ~binop_expression() noexcept override;
   type get_type() const;
   bool is_constant_expression() const;
   std::string get_code() const;
@@ -106,11 +104,10 @@ private:
   std::unique_ptr<expression> right;
 };
 
-class not_expression : public expression {
+class not_expression {
 public:
   not_expression(int line, std::string op, std::unique_ptr<expression> operand)
       : line(line), op(std::move(op)), operand(std::move(operand)) {}
-  ~not_expression() noexcept override;
   type get_type() const;
   bool is_constant_expression() const;
   std::string get_code() const;
@@ -232,6 +229,11 @@ private:
 };
 
 using commands_t = std::vector<std::unique_ptr<instruction>>;
+
+std::string get_code(const expression &expr);
+unsigned get_value(const expression &expr);
+bool is_constant_expression(const expression &expr);
+type get_type(const expression &expr);
 
 void type_check_commands(const commands_t &commands);
 
