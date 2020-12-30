@@ -13,7 +13,7 @@
 }
 
 %code provides {
-int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
+  int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 }
 
 %parse-param {statements &ast}

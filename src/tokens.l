@@ -1,10 +1,13 @@
 %option c++ noyywrap
 
 %{
-#include <iostream>
-#include <cstdlib>
-#include "implementation.hh"
-#include "grammer.hpp"
+  #include "expressions.h"
+  #include "statements.h"
+  #include "utility.h"
+  #include "grammar.hpp"
+
+  #include <iostream>
+  #include <cstdlib>
 %}
 
 %%
