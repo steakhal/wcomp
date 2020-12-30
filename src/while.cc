@@ -1,12 +1,16 @@
 #include "grammer.hpp"
-#include "implementation.hh"
-
 #include <FlexLexer.h>
+
+#include "expressions.h"
+#include "statements.h"
+#include "utility.h"
 
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <list>
+#include <map>
+#include <sstream>
+#include <string>
 
 yyFlexLexer *lexer;
 
@@ -50,10 +54,11 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  bool should_compile = false;
   if (std::string(argv[1]) == "-c") {
-    current_mode = compiler;
+    should_compile = true;
   } else if (std::string(argv[1]) == "-i") {
-    current_mode = interpreter;
+    should_compile = false;
   } else {
     std::cerr << "Usage: " << argv[0] << "(-c|-i) inputfile" << std::endl;
     exit(1);
@@ -77,7 +82,7 @@ int main(int argc, char *argv[]) {
 
   statements ast = build_ast_from(input);
 
-  if (current_mode == compiler) {
+  if (should_compile) {
     std::cout << ::get_bootstrapped_code(ast);
   } else {
     ::execute(ast);

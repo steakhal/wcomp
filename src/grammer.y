@@ -3,7 +3,9 @@
 %define api.value.type variant
 
 %code requires {
-  #include "implementation.hh"
+  #include "expressions.h"
+  #include "statements.h"
+  #include "utility.h"
   #include <vector>
   #include <memory>
   #include <utility>

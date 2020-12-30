@@ -1,9 +1,16 @@
-#include "implementation.hh"
+#include "expressions.h"
+#include "statements.h"
+#include "utility.h"
+
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
 #include <string_view>
 
-mode current_mode;
+#include <FlexLexer.h>
+
+void unreachable() { assert(false && "Unreachable!"); }
 
 void error(int line, const std::string_view &msg) {
   std::cerr << "Line " << line << ": Error: " << msg << '\n';
