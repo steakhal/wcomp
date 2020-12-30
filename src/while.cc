@@ -57,5 +57,11 @@ int main(int argc, char *argv[]) {
   };
 
   commands_t ast = build_ast_from(input);
+
+  if (current_mode == compiler) {
+    generate_code(ast);
+  } else {
+    execute_commands(ast);
+  }
   return 0;
 }

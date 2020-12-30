@@ -45,11 +45,7 @@ int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 start:
   PROGRAM ID declarations BEGIN_ commands END {
     type_check_commands($5);
-    if(current_mode == compiler) {
-      generate_code($5);
-    } else {
-      execute_commands($5);
-    }
+    ast = std::move($5);
   }
 ;
 
