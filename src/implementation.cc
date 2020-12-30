@@ -16,7 +16,6 @@ number_expression::~number_expression() noexcept = default;
 boolean_expression::~boolean_expression() noexcept = default;
 id_expression::~id_expression() noexcept = default;
 binop_expression::~binop_expression() noexcept = default;
-triop_expression::~triop_expression() noexcept = default;
 not_expression::~not_expression() noexcept = default;
 
 instruction::~instruction() noexcept = default;

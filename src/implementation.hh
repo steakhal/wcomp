@@ -106,27 +106,6 @@ private:
   std::unique_ptr<expression> right;
 };
 
-class triop_expression : public expression {
-public:
-  triop_expression(int line, std::string op, std::unique_ptr<expression> cond,
-                   std::unique_ptr<expression> left,
-                   std::unique_ptr<expression> right)
-      : line(line), op(std::move(op)), cond(std::move(cond)),
-        left(std::move(left)), right(std::move(right)) {}
-  ~triop_expression() noexcept override;
-  type get_type() const;
-  bool is_constant_expression() const;
-  std::string get_code() const;
-  unsigned get_value() const;
-
-private:
-  int line;
-  std::string op;
-  std::unique_ptr<expression> cond;
-  std::unique_ptr<expression> left;
-  std::unique_ptr<expression> right;
-};
-
 class not_expression : public expression {
 public:
   not_expression(int line, std::string op, std::unique_ptr<expression> operand)

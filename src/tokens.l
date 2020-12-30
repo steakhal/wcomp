@@ -27,8 +27,6 @@ done                        return yy::parser::token::DONE;
 true                        return yy::parser::token::TRUE;
 false                       return yy::parser::token::FALSE;
 ","                         return yy::parser::token::COMMA;
-"?"                         return yy::parser::token::QMARK;
-":"                         return yy::parser::token::COLON;
 ":="                        return yy::parser::token::ASSIGN;
 ".."                        return yy::parser::token::DOTDOT;
 "+"                         return yy::parser::token::ADD;

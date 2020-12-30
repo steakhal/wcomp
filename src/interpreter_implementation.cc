@@ -62,15 +62,6 @@ unsigned binop_expression::get_value() const {
   error(line, std::string("Unknown operator: ") + op);
 }
 
-bool triop_expression::is_constant_expression() const {
-  return cond->is_constant_expression() && left->is_constant_expression() &&
-         right->is_constant_expression();
-}
-
-unsigned triop_expression::get_value() const {
-  return cond->get_value() ? left->get_value() : right->get_value();
-}
-
 bool not_expression::is_constant_expression() const {
   return operand->is_constant_expression();
 }

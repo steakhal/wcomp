@@ -58,19 +58,6 @@ type binop_expression::get_type() const {
   return return_type(op);
 }
 
-type triop_expression::get_type() const {
-  assert(op == "?:" && "Unkown ternary operator.");
-
-  if (cond->get_type() != boolean)
-    error(line,
-          "The condition expression of operator '?:' must have boolean type.");
-
-  if (left->get_type() != right->get_type())
-    error(line, "Left and right operands of '?:' have different types.");
-
-  return right->get_type();
-}
-
 type not_expression::get_type() const {
   if (operand->get_type() != boolean) {
     error(line, "Operand of 'not' is not boolean.");

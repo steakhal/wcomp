@@ -124,34 +124,6 @@ std::string binop_expression::get_code() const {
   return ss.str();
 }
 
-std::string triop_expression::get_code() const {
-  if (is_constant_expression())
-    return store_into_eax(get_value());
-
-  std::string else_label = next_label();
-  std::string end_label = next_label();
-  std::stringstream ss;
-
-  if (cond->is_constant_expression()) {
-    if (cond->get_value())
-      return left->is_constant_expression() ? store_into_eax(left->get_value())
-                                            : left->get_code();
-    return right->is_constant_expression() ? store_into_eax(right->get_value())
-                                           : right->get_code();
-  }
-  ss << cond->get_code();
-  ss << "cmp al,1\n";
-  ss << "jne near " << else_label << '\n';
-  ss << (left->is_constant_expression() ? store_into_eax(left->get_value())
-                                        : left->get_code());
-  ss << "jmp " << end_label << '\n';
-  ss << else_label << ":\n";
-  ss << right->is_constant_expression() ? store_into_eax(right->get_value())
-                                        : right->get_code();
-  ss << end_label << ":\n";
-  return ss.str();
-}
-
 std::string not_expression::get_code() const {
   if (is_constant_expression())
     return store_into_eax(get_value());

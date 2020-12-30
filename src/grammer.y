@@ -24,7 +24,6 @@ int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 %token TRUE FALSE
 %token COMMA ASSIGN
 %token LPAREN RPAREN
-%token QMARK COLON
 %token <std::string> ID
 %token <std::string> NUM
 
@@ -109,9 +108,6 @@ expression:
   }
 | ID {
     $$ = std::make_unique<id_expression>(@1.begin.line, std::move($1));
-  }
-| expression QMARK expression COLON expression {
-    $$ = std::make_unique<triop_expression>(@2.begin.line, "?:", std::move($1), std::move($3), std::move($5));
   }
 | expression ADD expression {
     $$ = std::make_unique<binop_expression>(@2.begin.line, "+", std::move($1), std::move($3));
