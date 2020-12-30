@@ -2,5 +2,11 @@
 bison/3.7.1
 flex/2.6.4
 
+[build_requires]
+nasm/2.15.05
+ninja/1.10.2
+cmake/3.19.2
+
 [generators]
 cmake
+virtualrunenv
