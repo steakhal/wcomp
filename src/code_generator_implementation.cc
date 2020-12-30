@@ -176,22 +176,6 @@ std::string assign_instruction::get_code() {
   return ss.str();
 }
 
-std::string simultan_assign_instruction::get_code() {
-  // TODO: Implement constant folding.
-
-  std::stringstream ss;
-  for (const auto &expr : right) {
-    ss << expr->get_code();
-    ss << "push eax\n";
-  }
-  for (auto it = left.rbegin(); it != left.rend(); ++it) {
-    auto &sym = symbol_table[*it];
-    ss << "pop eax\n";
-    ss << "mov [" + sym.label + "]," << get_register(sym.symbol_type) << '\n';
-  }
-  return ss.str();
-}
-
 std::string_view get_type_name(type t) {
   return t == boolean ? "boolean" : "natural";
 }

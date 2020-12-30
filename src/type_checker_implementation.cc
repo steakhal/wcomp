@@ -88,31 +88,6 @@ void assign_instruction::type_check() {
   }
 }
 
-void simultan_assign_instruction::type_check() {
-  if (left.size() != right.size()) {
-    std::stringstream ss;
-    ss << "Can not assign " << right.size() << " values to " << left.size()
-       << " variables.";
-    error(get_line(), ss.str());
-  }
-
-  for (const auto &id : left) {
-    if (symbol_table.count(id) == 0) {
-      error(get_line(), std::string("Undefined variable: ") + id);
-    }
-  }
-
-  auto it1 = left.begin();
-  auto it2 = right.begin();
-  for (; it1 != left.end(); ++it1, ++it2) {
-    if (symbol_table[*it1].symbol_type != (*it2)->get_type()) {
-      // TODO: Improve error message.
-      error(get_line(), "Left and right hand sides of simultan assignment are "
-                        "of different types.");
-    }
-  }
-}
-
 void read_instruction::type_check() {
   if (symbol_table.count(id) == 0) {
     error(get_line(), std::string("Undefined variable: ") + id);

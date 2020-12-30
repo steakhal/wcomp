@@ -81,19 +81,6 @@ unsigned not_expression::get_value() const {
 
 void assign_instruction::execute() { value_table[left] = right->get_value(); }
 
-void simultan_assign_instruction::execute() {
-  std::vector<unsigned> tmps;
-  tmps.reserve(right.size());
-  for (const auto &expr : right) {
-    tmps.push_back(expr->get_value());
-  }
-
-  int i = 0;
-  for (const auto &vname : left) {
-    value_table[vname] = tmps[i++];
-  }
-}
-
 void read_instruction::execute() {
   std::string input_line;
   getline(std::cin, input_line);

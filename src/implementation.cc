@@ -21,7 +21,6 @@ not_expression::~not_expression() noexcept = default;
 
 instruction::~instruction() noexcept = default;
 assign_instruction::~assign_instruction() noexcept = default;
-simultan_assign_instruction::~simultan_assign_instruction() noexcept = default;
 read_instruction::~read_instruction() noexcept = default;
 write_instruction::~write_instruction() noexcept = default;
 if_instruction::~if_instruction() noexcept = default;

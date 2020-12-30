@@ -171,21 +171,6 @@ private:
   std::unique_ptr<expression> right;
 };
 
-class simultan_assign_instruction : public instruction {
-public:
-  simultan_assign_instruction(int line, std::vector<std::string> left,
-                              std::vector<std::unique_ptr<expression>> right)
-      : instruction(line), left(std::move(left)), right(std::move(right)) {}
-  ~simultan_assign_instruction() noexcept override;
-  void type_check();
-  std::string get_code();
-  void execute();
-
-private:
-  std::vector<std::string> left;
-  std::vector<std::unique_ptr<expression>> right;
-};
-
 class read_instruction : public instruction {
 public:
   read_instruction(int line, std::string id)

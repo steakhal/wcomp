@@ -37,8 +37,6 @@ int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 %type <std::unique_ptr<expression>> expression
 %type <std::unique_ptr<instruction>> command
 %type <std::vector<std::unique_ptr<instruction>>> commands
-%type <std::vector<std::string>> idpack
-%type <std::vector<std::unique_ptr<expression>>> exprpack
 
 %%
 
@@ -77,30 +75,6 @@ commands:
   }
 ;
 
-idpack:
-  ID {
-    std::vector<std::string> pack;
-    pack.push_back(std::move($1));
-    $$ = std::move(pack);
-  }
-| idpack COMMA ID {
-    $1.push_back(std::move($3));
-    $$ = std::move($1);
-  }
-;
-
-exprpack:
-  expression {
-    std::vector<std::unique_ptr<expression>> pack;
-    pack.push_back(std::move($1));
-    $$ = std::move(pack);
-  }
-| exprpack COMMA expression {
-    $1.push_back(std::move($3));
-    $$ = std::move($1);
-  }
-;
-
 command:
   READ LPAREN ID RPAREN {
     $$ = std::make_unique<read_instruction>(@1.begin.line, std::move($3));
@@ -110,9 +84,6 @@ command:
   }
 | ID ASSIGN expression {
     $$ = std::make_unique<assign_instruction>(@2.begin.line, std::move($1), std::move($3));
-  }
-| idpack ASSIGN exprpack {
-    $$ = std::make_unique<simultan_assign_instruction>(@2.begin.line, std::move($1), std::move($3));
   }
 | IF expression THEN commands ENDIF {
     $$ = std::make_unique<if_instruction>(@1.begin.line, std::move($2), std::move($4), std::vector<std::unique_ptr<instruction>>());
