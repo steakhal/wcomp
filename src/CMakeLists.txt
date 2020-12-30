@@ -4,7 +4,7 @@ target_include_directories(lexer PRIVATE ".")
 target_link_libraries(lexer PUBLIC CONAN_PKG::flex)
 
 
-bison_target(parser grammer.y "${GENERATED_SRC}/grammer.cpp")
+bison_target(parser grammer.y "${GENERATED_SRC}/grammer.cpp" COMPILE_FLAGS -Wcounterexamples)
 add_library(parser STATIC ${BISON_parser_OUTPUTS})
 target_include_directories(parser PRIVATE ".")
 target_include_directories(parser INTERFACE "${GENERATED_SRC}")
