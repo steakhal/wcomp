@@ -1,6 +1,7 @@
 #ifndef IMPLEMENTATION_HH
 #define IMPLEMENTATION_HH
 
+#include <cassert>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -10,22 +11,21 @@
 #include <vector>
 
 enum mode { compiler, interpreter };
-
 extern mode current_mode;
 
 enum type { boolean, natural };
 
+[[noreturn]] static void unreachable() { assert(false && "Unreachable!"); }
 [[noreturn]] void error(int line, const std::string_view &msg);
 
-class number_expression;
-class boolean_expression;
-class id_expression;
-class binop_expression;
-class not_expression;
+using expression = std::variant<class number_expression,
+                                class boolean_expression, class id_expression,
+                                class binop_expression, class not_expression>;
 
-using expression =
-    std::variant<number_expression, boolean_expression, id_expression,
-                 binop_expression, not_expression>;
+using statement = std::variant<class invalid_statement, class assign_statement,
+                               class read_statement, class write_statement,
+                               class if_statement, class while_statement>;
+using statements = std::vector<statement>;
 
 class number_expression {
 public:
@@ -51,8 +51,6 @@ private:
   bool value;
 };
 
-extern long id;
-
 extern std::string next_label();
 
 struct symbol {
@@ -60,9 +58,9 @@ struct symbol {
   symbol(int line, std::string name, type type)
       : line(line), name(std::move(name)), symbol_type(type),
         label(next_label()) {}
-  void declare();
-  std::string get_code();
-  int get_size();
+  void declare() const;
+  std::string get_code() const;
+  int get_size() const;
   int line;
   std::string name;
   type symbol_type;
@@ -119,131 +117,104 @@ private:
   std::unique_ptr<expression> operand;
 };
 
-class instruction {
+class statement_base {
 public:
-  explicit instruction(int line) : line(line) {}
-  virtual ~instruction() = 0;
-  virtual void type_check() = 0;
-  virtual std::string get_code() = 0;
-  virtual void execute() = 0;
+  explicit statement_base(int line) : line(line) {}
   int get_line() const { return line; }
 
 private:
   int line;
 };
 
-class assign_instruction : public instruction {
+class invalid_statement {
 public:
-  assign_instruction(int line, std::string left,
-                     std::unique_ptr<expression> right)
-      : instruction(line), left(std::move(left)), right(std::move(right)) {}
-  ~assign_instruction() noexcept override;
-  void type_check();
-  std::string get_code();
-  void execute();
+  void type_check() const { unreachable(); }
+  std::string get_code() const { unreachable(); }
+  void execute() const { unreachable(); }
+};
+
+class assign_statement : public statement_base {
+public:
+  assign_statement(int line, std::string left,
+                   std::unique_ptr<expression> right)
+      : statement_base(line), left(std::move(left)), right(std::move(right)) {}
+  void type_check() const;
+  std::string get_code() const;
+  void execute() const;
 
 private:
   std::string left;
   std::unique_ptr<expression> right;
 };
 
-class read_instruction : public instruction {
+class read_statement : public statement_base {
 public:
-  read_instruction(int line, std::string id)
-      : instruction(line), id(std::move(id)) {}
-  ~read_instruction() noexcept override;
-  void type_check();
-  std::string get_code();
-  void execute();
+  read_statement(int line, std::string id)
+      : statement_base(line), id(std::move(id)) {}
+  void type_check() const;
+  std::string get_code() const;
+  void execute() const;
 
 private:
   std::string id;
 };
 
-class write_instruction : public instruction {
+class write_statement : public statement_base {
 public:
-  write_instruction(int line, std::unique_ptr<expression> value)
-      : instruction(line), value(std::move(value)) {}
-  ~write_instruction() noexcept override;
-  void type_check();
-  std::string get_code();
-  void execute();
+  write_statement(int line, std::unique_ptr<expression> value)
+      : statement_base(line), value(std::move(value)) {}
+  void type_check() const;
+  std::string get_code() const;
+  void execute() const;
 
 private:
   std::unique_ptr<expression> value;
 };
 
-class if_instruction : public instruction {
+class if_statement : public statement_base {
 public:
-  if_instruction(int line, std::unique_ptr<expression> condition,
-                 std::vector<std::unique_ptr<instruction>> true_branch,
-                 std::vector<std::unique_ptr<instruction>> false_branch)
-      : instruction(line), condition(std::move(condition)),
+  if_statement(int line, std::unique_ptr<expression> condition,
+               statements true_branch, statements false_branch)
+      : statement_base(line), condition(std::move(condition)),
         true_branch(std::move(true_branch)),
         false_branch(std::move(false_branch)) {}
-  ~if_instruction() noexcept override;
-  void type_check();
-  std::string get_code();
-  void execute();
+  void type_check() const;
+  std::string get_code() const;
+  void execute() const;
 
 private:
   std::unique_ptr<expression> condition;
-  std::vector<std::unique_ptr<instruction>> true_branch;
-  std::vector<std::unique_ptr<instruction>> false_branch;
+  statements true_branch;
+  statements false_branch;
 };
 
-class while_instruction : public instruction {
+class while_statement : public statement_base {
 public:
-  while_instruction(int line, std::unique_ptr<expression> condition,
-                    std::vector<std::unique_ptr<instruction>> body)
-      : instruction(line), condition(std::move(condition)),
+  while_statement(int line, std::unique_ptr<expression> condition,
+                  statements body)
+      : statement_base(line), condition(std::move(condition)),
         body(std::move(body)) {}
-  ~while_instruction() noexcept override;
-  void type_check();
-  std::string get_code();
-  void execute();
+  void type_check() const;
+  std::string get_code() const;
+  void execute() const;
 
 private:
   std::unique_ptr<expression> condition;
-  std::vector<std::unique_ptr<instruction>> body;
+  statements body;
 };
-
-class for_instruction : public instruction {
-public:
-  for_instruction(int line, std::string loopvar,
-                  std::unique_ptr<expression> first,
-                  std::unique_ptr<expression> last,
-                  std::vector<std::unique_ptr<instruction>> body)
-      : instruction(line), loopvar(std::move(loopvar)), first(std::move(first)),
-        last(std::move(last)), body(std::move(body)) {}
-  ~for_instruction() noexcept override;
-  void type_check();
-  std::string get_code();
-  void execute();
-
-private:
-  std::string loopvar;
-  std::unique_ptr<expression> first;
-  std::unique_ptr<expression> last;
-  std::vector<std::unique_ptr<instruction>> body;
-};
-
-using commands_t = std::vector<std::unique_ptr<instruction>>;
 
 std::string get_code(const expression &expr);
 unsigned get_value(const expression &expr);
 bool is_constant_expression(const expression &expr);
 type get_type(const expression &expr);
 
-void type_check_commands(const commands_t &commands);
+void type_check(const statement &stmt);
+std::string get_code(const statement &stmt);
+void execute(const statement &stmt);
 
-void generate_code_of_commands(std::ostream &out, const commands_t &commands);
-
-void execute_commands(const commands_t &commands);
-
-void delete_commands(const commands_t &commands);
-
-void generate_code(const commands_t &commands);
+void type_check(const statements &stmts);
+std::string get_code(const statements &stmts);
+void execute(const statements &stmts);
 
 extern bool do_constant_propagation;
 

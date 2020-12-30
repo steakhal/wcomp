@@ -4,7 +4,6 @@
 #include <string_view>
 
 mode current_mode;
-long id = 0;
 
 void error(int line, const std::string_view &msg) {
   std::cerr << "Line " << line << ": Error: " << msg << '\n';
@@ -25,10 +24,32 @@ type get_type(const expression &expr) {
   return std::visit([](auto &&arg) { return arg.get_type(); }, expr);
 }
 
-instruction::~instruction() noexcept = default;
-assign_instruction::~assign_instruction() noexcept = default;
-read_instruction::~read_instruction() noexcept = default;
-write_instruction::~write_instruction() noexcept = default;
-if_instruction::~if_instruction() noexcept = default;
-while_instruction::~while_instruction() noexcept = default;
-for_instruction::~for_instruction() noexcept = default;
+void type_check(const statement &stmt) {
+  std::visit([](auto &&arg) { return arg.type_check(); }, stmt);
+}
+std::string get_code(const statement &stmt) {
+  return std::visit([](auto &&arg) { return arg.get_code(); }, stmt);
+}
+
+void execute(const statement &stmt) {
+  std::visit([](auto &&arg) { return arg.execute(); }, stmt);
+}
+
+void type_check(const statements &stmts) {
+  for (const statement &stmt : stmts) {
+    std::visit([](auto &&arg) { arg.type_check(); }, stmt);
+  }
+}
+
+std::string get_code(const statements &stmts) {
+  std::stringstream ss;
+  for (const statement &stmt : stmts) {
+    std::visit([&ss](auto &&arg) { ss << arg.get_code(); }, stmt);
+  }
+  return ss.str();
+}
+void execute(const statements &stmts) {
+  for (const statement &stmt : stmts) {
+    std::visit([](auto &&arg) { return arg.execute(); }, stmt);
+  }
+}

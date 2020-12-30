@@ -22,19 +22,22 @@ std::string boolean_expression::get_code() const {
 
 std::string next_label() {
   std::stringstream ss;
+  static long id;
   ss << "label" << id++;
   return ss.str();
 }
 
-std::string symbol::get_code() {
+std::string symbol::get_code() const {
   std::stringstream ss;
   ss << label << ": resb " << get_size() << "\t; variable: " << name << '\n';
   return ss.str();
 }
 
-int symbol::get_size() { return symbol_type == boolean ? 1 : 4; }
+int symbol::get_size() const { return symbol_type == boolean ? 1 : 4; }
 
-std::string_view get_register(type t) { return t == boolean ? "al" : "eax"; }
+static std::string_view get_register(type t) {
+  return t == boolean ? "al" : "eax";
+}
 
 std::string id_expression::get_code() const {
   if (symbol_table.count(name) == 0) {
@@ -46,7 +49,7 @@ std::string id_expression::get_code() const {
   return std::string("mov eax,[") + symbol_table[name].label + "]\n";
 }
 
-std::string operator_code(std::string_view op) {
+static std::string operator_code(std::string_view op) {
   std::stringstream ss;
   if (op == "+") {
     ss << "add eax,ecx\n";
@@ -95,7 +98,7 @@ std::string operator_code(std::string_view op) {
   return ss.str();
 }
 
-std::string eq_code(type t) {
+static std::string eq_code(type t) {
   std::stringstream ss;
   if (t == natural) {
     ss << "cmp eax,ecx\n";
@@ -134,7 +137,7 @@ std::string not_expression::get_code() const {
   return ss.str();
 }
 
-std::string assign_instruction::get_code() {
+std::string assign_statement::get_code() const {
   if (::is_constant_expression(*right) && do_constant_propagation) {
     execute(); // Store the evaluated value, so this variable becomes a constant
                // expression.
@@ -152,7 +155,7 @@ static std::string_view get_type_name(type t) {
   return t == boolean ? "boolean" : "natural";
 }
 
-std::string read_instruction::get_code() {
+std::string read_statement::get_code() const {
   const type ty = symbol_table[id].symbol_type;
   std::stringstream ss;
   ss << "call read_" << get_type_name(ty) << '\n';
@@ -160,7 +163,7 @@ std::string read_instruction::get_code() {
   return ss.str();
 }
 
-std::string write_instruction::get_code() {
+std::string write_statement::get_code() const {
   const type ty = ::get_type(*value);
   std::stringstream ss;
   ss << ::get_code(*value);
@@ -173,12 +176,9 @@ std::string write_instruction::get_code() {
   return ss.str();
 }
 
-std::string if_instruction::get_code() {
+std::string if_statement::get_code() const {
   if (::is_constant_expression(*condition)) {
-    std::stringstream ss;
-    generate_code_of_commands(ss, ::get_value(*condition) ? true_branch
-                                                          : false_branch);
-    return ss.str();
+    return ::get_code(::get_value(*condition) ? true_branch : false_branch);
   }
 
   std::string else_label = next_label();
@@ -187,15 +187,15 @@ std::string if_instruction::get_code() {
   ss << ::get_code(*condition);
   ss << "cmp al,1\n";
   ss << "jne near " << else_label << '\n';
-  generate_code_of_commands(ss, true_branch);
+  ss << ::get_code(true_branch);
   ss << "jmp " << end_label << '\n';
   ss << else_label << ":\n";
-  generate_code_of_commands(ss, false_branch);
+  ss << ::get_code(false_branch);
   ss << end_label << ":\n";
   return ss.str();
 }
 
-std::string while_instruction::get_code() {
+std::string while_statement::get_code() const {
   // Elide the loop completely if possible.
   if (::is_constant_expression(*condition) &&
       ::get_value(*condition) == false) {
@@ -209,64 +209,8 @@ std::string while_instruction::get_code() {
   ss << ::get_code(*condition);
   ss << "cmp al,1\n";
   ss << "jne near " << end_label << '\n';
-  generate_code_of_commands(ss, body);
+  ss << ::get_code(body);
   ss << "jmp " << begin_label << '\n';
   ss << end_label << ":\n";
   return ss.str();
-}
-
-std::string for_instruction::get_code() {
-  save_and_restore<bool> Guard(do_constant_propagation, false);
-
-  std::stringstream ss;
-  std::string begin_label = next_label();
-  std::string end_label = next_label();
-
-  // calculate first and store to i
-  ss << ::get_code(*first);
-  ss << "mov [" + symbol_table[loopvar].label + "],eax\n";
-  ss << "dec eax\n";
-
-  ss << begin_label << ":\n";
-  ss << "inc eax\n";                                       // increment i
-  ss << "mov [" + symbol_table[loopvar].label + "],eax\n"; // store i
-  ss << "push eax\n";                                      // push i
-
-  ss << ::get_code(*last);
-  ss << "mov ecx,eax\n"; // store end into ecx
-  ss << "pop eax\n";     // pop i into eax
-
-  ss << operator_code("<"); // eax < ecx
-
-  ss << "cmp al,1\n";
-  ss << "jne near " << end_label << '\n';
-  generate_code_of_commands(ss, body);
-  ss << "mov eax,[" + symbol_table[loopvar].label + "]\n"; // load i
-  ss << "jmp " << begin_label << '\n';
-  ss << end_label << ":\n";
-
-  return ss.str();
-}
-
-void generate_code_of_commands(std::ostream &out, const commands_t &commands) {
-  for (const auto &command : commands) {
-    out << command->get_code();
-  }
-}
-
-void generate_code(const commands_t &commands) {
-  std::cout << "global main\n"
-               "extern write_natural\n"
-               "extern read_natural\n"
-               "extern write_boolean\n"
-               "extern read_boolean\n\n"
-               "section .bss\n";
-  std::map<std::string, symbol>::iterator it;
-  for (it = symbol_table.begin(); it != symbol_table.end(); ++it) {
-    std::cout << it->second.get_code();
-  }
-  std::cout << "\nsection .text\nmain:\n";
-  generate_code_of_commands(std::cout, commands);
-  std::cout << "xor eax,eax\n";
-  std::cout << "ret\n";
 }

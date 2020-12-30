@@ -14,7 +14,7 @@
 int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 }
 
-%parse-param {commands_t &ast}
+%parse-param {statements &ast}
 
 %token PROGRAM BEGIN_ END
 %token BOOLEAN NATURAL
@@ -36,14 +36,14 @@ int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 %precedence NOT
 
 %type <std::unique_ptr<expression>> expression
-%type <std::unique_ptr<instruction>> command
-%type <std::vector<std::unique_ptr<instruction>>> commands
+%type <statement> command
+%type <statements> commands
 
 %%
 
 start:
   PROGRAM ID declarations BEGIN_ commands END {
-    type_check_commands($5);
+    ::type_check($5);
     ast = std::move($5);
   }
 ;
@@ -64,7 +64,7 @@ declaration:
 
 commands:
   /* empty */ {
-    $$ = std::vector<std::unique_ptr<instruction>>();
+    $$ = statements{};
   }
 | commands command {
     $1.push_back(std::move($2));
@@ -74,25 +74,22 @@ commands:
 
 command:
   READ LPAREN ID RPAREN {
-    $$ = std::make_unique<read_instruction>(@1.begin.line, std::move($3));
+    $$ = read_statement{@1.begin.line, std::move($3)};
   }
 | WRITE LPAREN expression RPAREN {
-    $$ = std::make_unique<write_instruction>(@1.begin.line, std::move($3));
+    $$ =  write_statement{@1.begin.line, std::move($3)};
   }
 | ID ASSIGN expression {
-    $$ = std::make_unique<assign_instruction>(@2.begin.line, std::move($1), std::move($3));
+    $$ = assign_statement{@2.begin.line, std::move($1), std::move($3)};
   }
 | IF expression THEN commands ENDIF {
-    $$ = std::make_unique<if_instruction>(@1.begin.line, std::move($2), std::move($4), std::vector<std::unique_ptr<instruction>>());
+    $$ = if_statement{@1.begin.line, std::move($2), std::move($4), statements{}};
   }
 | IF expression THEN commands ELSE commands ENDIF {
-    $$ = std::make_unique<if_instruction>(@1.begin.line, std::move($2), std::move($4), std::move($6));
+    $$ = if_statement{@1.begin.line, std::move($2), std::move($4), std::move($6)};
   }
 | WHILE expression DO commands DONE {
-    $$ = std::make_unique<while_instruction>(@1.begin.line, std::move($2), std::move($4));
-  }
-| FOR ID ASSIGN expression DOTDOT expression DO commands DONE {
-    $$ = std::make_unique<for_instruction>(@1.begin.line, std::move($2), std::move($4), std::move($6), std::move($8));
+    $$ = while_statement{@1.begin.line, std::move($2), std::move($4)};
   }
 ;
 

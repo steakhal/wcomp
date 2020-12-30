@@ -25,6 +25,25 @@ void yy::parser::error(const location_type &loc, const std::string &msg) {
   exit(1);
 }
 
+static std::string get_bootstrapped_code(const statements &stmts) {
+  std::stringstream ss;
+  ss << "global main\n"
+        "extern write_natural\n"
+        "extern read_natural\n"
+        "extern write_boolean\n"
+        "extern read_boolean\n\n"
+        "section .bss\n";
+  std::map<std::string, symbol>::iterator it;
+  for (it = symbol_table.begin(); it != symbol_table.end(); ++it) {
+    ss << it->second.get_code();
+  }
+  ss << "\nsection .text\nmain:\n";
+  ss << ::get_code(stmts);
+  ss << "xor eax,eax\n";
+  ss << "ret\n";
+  return ss.str();
+}
+
 int main(int argc, char *argv[]) {
   if (argc != 3) {
     std::cerr << "Usage: " << argv[0] << " (-c|-i) inputfile" << std::endl;
@@ -47,7 +66,7 @@ int main(int argc, char *argv[]) {
   }
 
   const auto build_ast_from = [](std::istream &is) {
-    commands_t ast;
+    statements ast;
     std::unique_ptr lexer = std::make_unique<yyFlexLexer>(&is);
     ::lexer = lexer.get();
     yy::parser parser{ast};
@@ -56,12 +75,12 @@ int main(int argc, char *argv[]) {
     return ast;
   };
 
-  commands_t ast = build_ast_from(input);
+  statements ast = build_ast_from(input);
 
   if (current_mode == compiler) {
-    generate_code(ast);
+    std::cout << ::get_bootstrapped_code(ast);
   } else {
-    execute_commands(ast);
+    ::execute(ast);
   }
   return 0;
 }

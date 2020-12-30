@@ -14,7 +14,9 @@ unsigned number_expression::get_value() const { return value; }
 
 bool boolean_expression::is_constant_expression() const { return true; }
 
-unsigned boolean_expression::get_value() const { return (unsigned)value; }
+unsigned boolean_expression::get_value() const {
+  return static_cast<unsigned>(value);
+}
 
 bool id_expression::is_constant_expression() const {
   // If we have a constant value associated with it, true.
@@ -32,8 +34,8 @@ bool binop_expression::is_constant_expression() const {
 }
 
 unsigned binop_expression::get_value() const {
-  unsigned left_value = ::get_value(*left);
-  unsigned right_value = ::get_value(*right);
+  const unsigned left_value = ::get_value(*left);
+  const unsigned right_value = ::get_value(*right);
   if (op == "+") {
     return left_value + right_value;
   } else if (op == "-") {
@@ -70,11 +72,13 @@ unsigned not_expression::get_value() const {
   return !static_cast<bool>(::get_value(*operand));
 }
 
-void assign_instruction::execute() { value_table[left] = ::get_value(*right); }
+void assign_statement::execute() const {
+  value_table[left] = ::get_value(*right);
+}
 
-void read_instruction::execute() {
+void read_statement::execute() const {
   std::string input_line;
-  getline(std::cin, input_line);
+  std::getline(std::cin, input_line);
   if (symbol_table[id].symbol_type == natural) {
     std::stringstream ss(input_line);
     unsigned input;
@@ -85,31 +89,19 @@ void read_instruction::execute() {
   }
 }
 
-void write_instruction::execute() {
+void write_statement::execute() const {
   const auto val = ::get_value(*value);
-  if (get_type(*value) == natural)
+  if (::get_type(*value) == natural)
     std::cout << val << '\n';
   else
     std::cout << (val ? "true\n" : "false\n");
 }
 
-void if_instruction::execute() {
-  execute_commands(::get_value(*condition) ? true_branch : false_branch);
+void if_statement::execute() const {
+  ::execute(::get_value(*condition) ? true_branch : false_branch);
 }
 
-void while_instruction::execute() {
+void while_statement::execute() const {
   while (::get_value(*condition))
-    execute_commands(body);
-}
-
-void for_instruction::execute() {
-  unsigned &var = value_table[loopvar];
-  for (var = ::get_value(*first); var < ::get_value(*last); ++var) {
-    execute_commands(body);
-  }
-}
-
-void execute_commands(const commands_t &commands) {
-  for (const auto &command : commands)
-    command->execute();
+    ::execute(body);
 }

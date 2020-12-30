@@ -9,7 +9,7 @@ type number_expression::get_type() const { return natural; }
 
 type boolean_expression::get_type() const { return boolean; }
 
-void symbol::declare() {
+void symbol::declare() const {
   if (symbol_table.count(name) > 0) {
     error(line, std::string("Re-declared variable: ") + name);
   }
@@ -23,7 +23,7 @@ type id_expression::get_type() const {
   return symbol_table[name].symbol_type;
 }
 
-type operand_type(std::string_view op) {
+static type operand_type(std::string_view op) {
   if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%" ||
       op == "<" || op == ">" || op == "<=" || op == ">=") {
     return natural;
@@ -32,7 +32,7 @@ type operand_type(std::string_view op) {
   }
 }
 
-type return_type(std::string_view op) {
+static type return_type(std::string_view op) {
   if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
     return natural;
   } else {
@@ -66,7 +66,7 @@ type not_expression::get_type() const {
   return boolean;
 }
 
-void assign_instruction::type_check() {
+void assign_statement::type_check() const {
   if (symbol_table.count(left) == 0) {
     error(get_line(), std::string("Undefined variable: ") + left);
   }
@@ -76,47 +76,25 @@ void assign_instruction::type_check() {
   }
 }
 
-void read_instruction::type_check() {
+void read_statement::type_check() const {
   if (symbol_table.count(id) == 0) {
     error(get_line(), std::string("Undefined variable: ") + id);
   }
 }
 
-void write_instruction::type_check() {}
+void write_statement::type_check() const {}
 
-void if_instruction::type_check() {
+void if_statement::type_check() const {
   if (::get_type(*condition) != boolean) {
     error(get_line(), "Condition of 'if' instruction is not boolean.");
   }
-  type_check_commands(true_branch);
-  type_check_commands(false_branch);
+  ::type_check(true_branch);
+  ::type_check(false_branch);
 }
 
-void while_instruction::type_check() {
+void while_statement::type_check() const {
   if (::get_type(*condition) != boolean) {
     error(get_line(), "Condition of 'while' instruction is not boolean.");
   }
-  type_check_commands(body);
-}
-
-void for_instruction::type_check() {
-  if (symbol_table.count(loopvar) == 0) {
-    error(get_line(), std::string("Undefined variable: ") + loopvar);
-  }
-  if (symbol_table[loopvar].symbol_type != natural) {
-    error(get_line(), "The loop variable must have natural type.");
-  }
-  if (::get_type(*first) != natural) {
-    error(get_line(),
-          "Begin of the range of 'for' instruction is not natural.");
-  }
-  if (::get_type(*last) != natural) {
-    error(get_line(), "End of the range of 'for' instruction is not natural.");
-  }
-  type_check_commands(body);
-}
-
-void type_check_commands(const commands_t &commands) {
-  for (const auto &command : commands)
-    command->type_check();
+  ::type_check(body);
 }
