@@ -51,7 +51,6 @@ public:
   std::string get_code() const;
   unsigned get_value() const;
 
-private:
   int line;
   std::string name;
 };
@@ -67,7 +66,6 @@ public:
   std::string get_code() const;
   unsigned get_value() const;
 
-private:
   int line;
   std::string op;
   std::unique_ptr<expression> left;
@@ -83,7 +81,6 @@ public:
   std::string get_code() const;
   unsigned get_value() const;
 
-private:
   int line;
   std::string op;
   std::unique_ptr<expression> operand;

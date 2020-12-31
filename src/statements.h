@@ -45,7 +45,6 @@ public:
   std::string get_code() const;
   void execute() const;
 
-private:
   std::string left;
   std::unique_ptr<expression> right;
 };
@@ -58,7 +57,6 @@ public:
   std::string get_code() const;
   void execute() const;
 
-private:
   std::string id;
 };
 
@@ -70,7 +68,6 @@ public:
   std::string get_code() const;
   void execute() const;
 
-private:
   std::unique_ptr<expression> value;
 };
 
@@ -85,7 +82,6 @@ public:
   std::string get_code() const;
   void execute() const;
 
-private:
   std::unique_ptr<expression> condition;
   statements true_branch;
   statements false_branch;
@@ -101,7 +97,6 @@ public:
   std::string get_code() const;
   void execute() const;
 
-private:
   std::unique_ptr<expression> condition;
   statements body;
 };
