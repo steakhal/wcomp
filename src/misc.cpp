@@ -2,6 +2,7 @@
 #include "statements.h"
 #include "utility.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
@@ -15,6 +16,11 @@ void unreachable() { assert(false && "Unreachable!"); }
 void error(int line, const std::string_view &msg) {
   std::cerr << "Line " << line << ": Error: " << msg << '\n';
   std::exit(1);
+}
+
+std::ostream &repeat(std::ostream &os, char input, size_t num) {
+  std::fill_n(std::ostream_iterator<char>(os), num, input);
+  return os;
 }
 
 std::string get_code(const expression &expr) {

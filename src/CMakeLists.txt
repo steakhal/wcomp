@@ -17,7 +17,10 @@ add_executable(wcomp
   misc.cpp
   interpreter.cpp
   typecheck.cpp
+  cfg.cpp
+  expression_dumper.cpp
   ast_dumper.cpp
+  cfg_dumper.cpp
 )
 target_link_libraries(wcomp PRIVATE lexer parser)
 target_include_directories(wcomp PRIVATE ".")

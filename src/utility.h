@@ -1,10 +1,13 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
+#include <iostream>
 #include <string_view>
 
 [[noreturn]] void unreachable();
 [[noreturn]] void error(int line, const std::string_view &msg);
+
+std::ostream &repeat(std::ostream &os, char input, size_t num);
 
 extern bool do_constant_propagation;
 

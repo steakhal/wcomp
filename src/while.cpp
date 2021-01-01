@@ -1,5 +1,5 @@
-#include "grammar.hpp"
 #include "FlexLexer.h"
+#include "grammar.hpp"
 
 #include "expressions.h"
 #include "statements.h"

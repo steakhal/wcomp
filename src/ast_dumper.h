@@ -1,26 +1,21 @@
 #ifndef AST_DUMPER_H
 #define AST_DUMPER_H
 
+#include "expression_dumper.h"
 #include "expressions.h"
 #include "statements.h"
-#include "utility.h"
 
 #include <iostream>
 
-class ast_dumper {
+class ast_dumper : private expression_dumper {
   std::ostream &os;
   const unsigned indent;
 
 public:
   explicit ast_dumper(std::ostream &os, unsigned initial_indent = 0)
-      : os{os}, indent{initial_indent} {}
+      : expression_dumper{os, initial_indent}, os{os}, indent{initial_indent} {}
 
-  std::ostream &operator()(const expression &x) const noexcept;
-  std::ostream &operator()(const number_expression &x) const noexcept;
-  std::ostream &operator()(const boolean_expression &x) const noexcept;
-  std::ostream &operator()(const id_expression &x) const noexcept;
-  std::ostream &operator()(const binop_expression &x) const noexcept;
-  std::ostream &operator()(const not_expression &x) const noexcept;
+  using expression_dumper::operator();
 
   std::ostream &operator()(const statements &xs) const noexcept;
   std::ostream &operator()(const statement &x) const noexcept;
