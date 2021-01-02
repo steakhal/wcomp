@@ -21,6 +21,7 @@ add_executable(wcomp
   expression_dumper.cpp
   ast_dumper.cpp
   cfg_dumper.cpp
+  ast_to_cfg.cpp
 )
 target_link_libraries(wcomp PRIVATE lexer parser)
 target_include_directories(wcomp PRIVATE ".")

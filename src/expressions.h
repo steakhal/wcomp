@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <variant>
 
 #include "utility.h"
@@ -29,6 +30,7 @@ public:
 private:
   unsigned value;
 };
+static_assert(std::is_copy_constructible_v<number_expression>);
 
 class boolean_expression {
 public:
@@ -41,6 +43,7 @@ public:
 private:
   bool value;
 };
+static_assert(std::is_copy_constructible_v<boolean_expression>);
 
 class id_expression {
 public:
@@ -54,6 +57,7 @@ public:
   int line;
   std::string name;
 };
+static_assert(std::is_copy_constructible_v<id_expression>);
 
 class binop_expression {
 public:
@@ -61,6 +65,11 @@ public:
                    std::unique_ptr<expression> right)
       : line(line), op(std::move(op)), left(std::move(left)),
         right(std::move(right)) {}
+  binop_expression(const binop_expression &other);
+  binop_expression(binop_expression &&other) = default;
+  binop_expression &operator=(const binop_expression &other);
+  binop_expression &operator=(binop_expression &&other) = default;
+
   type get_type() const;
   bool is_constant_expression() const;
   std::string get_code() const;
@@ -71,11 +80,17 @@ public:
   std::unique_ptr<expression> left;
   std::unique_ptr<expression> right;
 };
+static_assert(std::is_copy_constructible_v<binop_expression>);
 
 class not_expression {
 public:
   not_expression(int line, std::string op, std::unique_ptr<expression> operand)
       : line(line), op(std::move(op)), operand(std::move(operand)) {}
+  not_expression(const not_expression &other);
+  not_expression(not_expression &&other) = default;
+  not_expression &operator=(const not_expression &other);
+  not_expression &operator=(not_expression &&other) = default;
+
   type get_type() const;
   bool is_constant_expression() const;
   std::string get_code() const;
@@ -85,6 +100,7 @@ public:
   std::string op;
   std::unique_ptr<expression> operand;
 };
+static_assert(std::is_copy_constructible_v<not_expression>);
 
 /////// symbol ///////////
 extern std::string next_label();

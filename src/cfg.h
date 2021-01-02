@@ -32,6 +32,8 @@ public:
 using bb_idx = std::size_t;
 
 class basicblock {
+  void add_child(basicblock *child);
+
 public:
   const bb_idx id;
   std::vector<ir_instruction> instructions;
@@ -39,7 +41,6 @@ public:
 
   explicit basicblock(bb_idx id) : id{id} {}
 
-  void add_child(basicblock *child);
   void add_ir_instruction(ir_instruction inst);
 
   bool operator<(const basicblock &other) const noexcept;
@@ -49,11 +50,10 @@ class cfg {
 public:
   std::map<bb_idx, basicblock> blocks;
   bb_idx next_bb_idx = 0;
-  basicblock &entry = create_bb(); // 0
-  basicblock &exit = create_bb();  // 1
+  basicblock *entry = create_bb();
+  basicblock *exit = entry;
 
-  basicblock &create_bb();
-  void delete_bb(const basicblock &bb);
+  basicblock *create_bb();
 };
 
 #endif // CFG_H
