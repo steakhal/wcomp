@@ -54,6 +54,7 @@ public:
   basicblock *exit = entry;
 
   basicblock *create_bb();
+  void remove_bb(basicblock *bb);
 };
 
 #endif // CFG_H

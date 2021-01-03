@@ -1,5 +1,6 @@
 #include "cfg.h"
 
+#include <algorithm>
 #include <cassert>
 #include <variant>
 
@@ -39,4 +40,18 @@ basicblock *cfg::create_bb() {
   const auto idx = next_bb_idx++;
   auto [it, _] = blocks.emplace(std::make_pair(idx, basicblock{idx}));
   return &it->second;
+}
+
+void cfg::remove_bb(basicblock *bb) {
+  assert(bb);
+  assert(std::all_of(blocks.begin(), blocks.end(),
+                     [bb](const auto &pair) {
+                       const auto &range = pair.second.children;
+                       return std::none_of(
+                           range.begin(), range.end(),
+                           [bb](const auto *x) { return x == bb; });
+                     }) &&
+         "No basic block should refer to a removed element.");
+  const auto removed_count = blocks.erase(bb->id);
+  assert(removed_count == 1);
 }
