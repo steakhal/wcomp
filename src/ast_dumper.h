@@ -17,6 +17,8 @@ public:
 
   using expression_dumper::operator();
 
+  std::ostream &operator()(const ast &x) const noexcept;
+  std::ostream &operator()(const symbols &xs) const noexcept;
   std::ostream &operator()(const statements &xs) const noexcept;
   std::ostream &operator()(const statement &x) const noexcept;
   std::ostream &operator()(const invalid_statement &x) const noexcept;

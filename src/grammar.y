@@ -6,17 +6,21 @@
   #include "expressions.h"
   #include "statements.h"
   #include "utility.h"
+  #include "typecheck.h"
+
   #include <vector>
   #include <memory>
   #include <utility>
   #include <cstdlib>
+  #include <sstream>
+  #include <map>
 }
 
 %code provides {
   int yylex(yy::parser::semantic_type* yylval, yy::parser::location_type* yylloc);
 }
 
-%parse-param {statements &ast}
+%parse-param {::ast &ast}
 
 %token PROGRAM BEGIN_ END
 %token BOOLEAN NATURAL
@@ -40,27 +44,42 @@
 %type <std::unique_ptr<expression>> expression
 %type <statement> command
 %type <statements> commands
+%type <symbol> declaration
+%type <symbols> declarations
 
 %%
 
 start:
   PROGRAM ID declarations BEGIN_ commands END {
-    ::type_check($5);
-    ast = std::move($5);
+    type_check($3, $5);
+    ast.prog_name = std::move($2);
+    ast.syms = std::move($3);
+    ast.stmts = std::move($5);
   }
 ;
 
 declarations:
-  /* empty */
-| declarations declaration
+  /* empty */ {
+    $$ = symbols{};
+  }
+| declarations declaration {
+    std::string name = $2.name;
+    auto [it, success] = $1.emplace(std::make_pair(name, std::move($2)));
+    if (!success) {
+      std::stringstream ss;
+      ss << "The symbol '" << name << "' was already declared.";
+      ::error(@2.begin.line, ss.str());
+    }
+    $$ = std::move($1);
+  }
 ;
 
 declaration:
   BOOLEAN ID {
-    symbol(@1.begin.line, $2, boolean).declare();
+    $$ = symbol{@1.begin.line, $2, boolean};
   }
 | NATURAL ID {
-    symbol(@1.begin.line, $2, natural).declare();
+    $$ = symbol{@1.begin.line, $2, natural};
   }
 ;
 

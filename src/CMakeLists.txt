@@ -15,7 +15,7 @@ add_executable(wcomp
   while.cpp
   codegen.cpp
   misc.cpp
-  interpreter.cpp
+# interpreter.cpp
   typecheck.cpp
   cfg.cpp
   expression_dumper.cpp
@@ -23,5 +23,5 @@ add_executable(wcomp
   cfg_dumper.cpp
   ast_to_cfg.cpp
 )
-target_link_libraries(wcomp PRIVATE lexer parser)
+target_link_libraries(wcomp PRIVATE lexer parser CONAN_PKG::cli11)
 target_include_directories(wcomp PRIVATE ".")

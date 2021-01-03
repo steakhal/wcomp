@@ -1,59 +1,42 @@
+#include "cfg.h"
 #include "expressions.h"
 #include "statements.h"
+#include "typecheck.h"
 #include "utility.h"
 
 #include <cassert>
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <string_view>
 
-static std::string store_into_eax(unsigned value) {
-  std::stringstream ss;
-  ss << "mov eax," << value << '\n';
-  return ss.str();
-}
+namespace {
+class symbols_to_asm {
+  std::ostream &ss;
 
-std::string number_expression::get_code() const {
-  return store_into_eax(value);
-}
+public:
+  explicit symbols_to_asm(std::ostream &ss) : ss{ss} {}
 
-std::string boolean_expression::get_code() const {
-  std::stringstream ss;
-  ss << "mov al," << (value ? 1 : 0) << '\n';
-  return ss.str();
-}
-
-std::string next_label() {
-  std::stringstream ss;
-  static long id;
-  ss << "label" << id++;
-  return ss.str();
-}
-
-std::string symbol::get_code() const {
-  std::stringstream ss;
-  ss << label << ": resb " << get_size() << "\t; variable: " << name << '\n';
-  return ss.str();
-}
-
-int symbol::get_size() const { return symbol_type == boolean ? 1 : 4; }
-
-static std::string_view get_register(type t) {
-  return t == boolean ? "al" : "eax";
-}
-
-std::string id_expression::get_code() const {
-  if (symbol_table.count(name) == 0) {
-    error(line, std::string("Undefined variable: ") + name);
+  void operator()(const symbols &syms) const {
+    for (const auto &pair : syms) {
+      const auto &name = pair.first;
+      const symbol &sym = pair.second;
+      const int width = sym.symbol_type == boolean ? 1 : 4;
+      ss << "var_" << sym.name << ": resb " << width << '\n';
+    }
   }
+};
 
-  if (is_constant_expression())
-    return store_into_eax(get_value());
-  return std::string("mov eax,[") + symbol_table[name].label + "]\n";
+std::string_view get_register(type ty) { return ty == boolean ? "al" : "eax"; }
+
+void emit_eq_code(std::ostream &ss, type ty) {
+  ss << (ty == natural ? "cmp eax,ecx\n" : "cmp al,cl\n");
+  ss << "mov al,0\n";
+  ss << "mov cx,1\n";
+  ss << "cmove ax,cx\n";
 }
 
-static std::string operator_code(std::string_view op) {
-  std::stringstream ss;
+void emit_operator_code(std::ostream &ss, std::string_view op) {
   if (op == "+") {
     ss << "add eax,ecx\n";
   } else if (op == "-") {
@@ -98,122 +81,131 @@ static std::string operator_code(std::string_view op) {
     error(-1,
           std::string("Bug: Unsupported binary operator: ") + std::string(op));
   }
-  return ss.str();
 }
 
-static std::string eq_code(type t) {
-  std::stringstream ss;
-  if (t == natural) {
-    ss << "cmp eax,ecx\n";
-  } else {
-    ss << "cmp al,cl\n";
+std::string_view get_type_name(type ty) {
+  return ty == boolean ? "boolean" : "natural";
+}
+
+class ir_to_asm {
+  const symbols &syms;
+  std::ostream &ss;
+
+public:
+  ir_to_asm(const symbols &syms, std::ostream &ss) : syms{syms}, ss{ss} {}
+
+  // Expressions:
+  void operator()(const number_expression &x) const {
+    ss << "mov eax," << x.value << '\n';
   }
-  ss << "mov al,0\n";
-  ss << "mov cx,1\n";
-  ss << "cmove ax,cx\n";
-  return ss.str();
-}
-
-std::string binop_expression::get_code() const {
-  if (is_constant_expression())
-    return store_into_eax(get_value());
-
-  std::stringstream ss;
-  ss << (::is_constant_expression(*left) ? store_into_eax(::get_value(*left))
-                                         : ::get_code(*left));
-  ss << "push eax\n";
-  ss << (::is_constant_expression(*right) ? store_into_eax(::get_value(*right))
-                                          : ::get_code(*right));
-  ss << "mov ecx,eax\n";
-  ss << "pop eax\n";
-  ss << (op == "=" ? eq_code(::get_type(*left)) : operator_code(op));
-  return ss.str();
-}
-
-std::string not_expression::get_code() const {
-  if (is_constant_expression())
-    return store_into_eax(get_value());
-
-  std::stringstream ss;
-  ss << ::get_code(*operand);
-  ss << "xor al,1\n";
-  return ss.str();
-}
-
-std::string assign_statement::get_code() const {
-  if (::is_constant_expression(*right) && do_constant_propagation) {
-    execute(); // Store the evaluated value, so this variable becomes a constant
-               // expression.
-    return store_into_eax(::get_value(*right));
+  void operator()(const boolean_expression &x) const {
+    ss << "mov al," << (x.value ? 1 : 0) << '\n';
+  }
+  void operator()(const id_expression &x) const {
+    const auto it = syms.find(x.name);
+    assert(it != syms.end());
+    ss << "mov eax,[var_" << it->second.name + "]\n";
+  }
+  void operator()(const binop_expression &x) const {
+    std::visit(*this, *x.left);
+    ss << "push eax\n";
+    std::visit(*this, *x.right);
+    ss << "mov ecx,eax\n";
+    ss << "pop eax\n";
+    if (x.op == "=")
+      emit_eq_code(ss, infer_expression_type(syms, *x.left));
+    else
+      emit_operator_code(ss, x.op);
+  }
+  void operator()(const not_expression &x) const {
+    std::visit(*this, *x.operand);
+    ss << "xor al,1\n";
   }
 
-  std::stringstream ss;
-  ss << ::get_code(*right);
-  ss << "mov [" + symbol_table[left].label + "],"
-     << get_register(symbol_table[left].symbol_type) << '\n';
-  return ss.str();
-}
-
-static std::string_view get_type_name(type t) {
-  return t == boolean ? "boolean" : "natural";
-}
-
-std::string read_statement::get_code() const {
-  const type ty = symbol_table[id].symbol_type;
-  std::stringstream ss;
-  ss << "call read_" << get_type_name(ty) << '\n';
-  ss << "mov [" << symbol_table[id].label << "]," << get_register(ty) << '\n';
-  return ss.str();
-}
-
-std::string write_statement::get_code() const {
-  const type ty = ::get_type(*value);
-  std::stringstream ss;
-  ss << ::get_code(*value);
-  if (ty == boolean) {
-    ss << "and eax,1\n";
+  // Statements:
+  void operator()(const assign_statement &x) const {
+    std::visit(*this, *x.right);
+    const auto it = syms.find(x.left);
+    assert(it != syms.end());
+    ss << "mov [var_" + it->second.name + "],"
+       << get_register(it->second.symbol_type) << '\n';
   }
-  ss << "push eax\n";
-  ss << "call write_" << get_type_name(ty) << '\n';
-  ss << "add esp,4\n";
-  return ss.str();
-}
-
-std::string if_statement::get_code() const {
-  if (::is_constant_expression(*condition)) {
-    return ::get_code(::get_value(*condition) ? true_branch : false_branch);
+  void operator()(const read_statement &x) const {
+    const auto it = syms.find(x.id);
+    assert(it != syms.end());
+    const type ty = it->second.symbol_type;
+    ss << "call read_" << get_type_name(ty) << '\n';
+    ss << "mov [var_" << it->second.name << "]," << get_register(ty) << '\n';
+  }
+  void operator()(const write_statement &x) const {
+    const type ty = infer_expression_type(syms, *x.value);
+    std::visit(*this, *x.value);
+    if (ty == boolean) {
+      ss << "and eax,1\n";
+    }
+    ss << "push eax\n";
+    ss << "call write_" << get_type_name(ty) << '\n';
+    ss << "add esp,4\n";
   }
 
-  std::string else_label = next_label();
-  std::string end_label = next_label();
-  std::stringstream ss;
-  ss << ::get_code(*condition);
-  ss << "cmp al,1\n";
-  ss << "jne near " << else_label << '\n';
-  ss << ::get_code(true_branch);
-  ss << "jmp " << end_label << '\n';
-  ss << else_label << ":\n";
-  ss << ::get_code(false_branch);
-  ss << end_label << ":\n";
-  return ss.str();
+  // Control-flow:
+  void operator()(const selector &x) const {
+    std::visit(*this, *x.condition);
+    ss << "cmp al,1\n";
+    ss << "je bb_" << x.true_branch.id << '\n';
+    ss << "jmp bb_" << x.false_branch.id << '\n';
+  }
+  void operator()(const jump &x) const {
+    ss << "jmp bb_" << x.target.id << '\n';
+  }
+};
+
+void emit_basicblock(std::ostream &ss, const cfg &cfg, const symbols &syms,
+                     const basicblock &bb) {
+  ir_to_asm emitter{syms, ss};
+
+  if (&bb == cfg.entry)
+    ss << "; entry\n";
+  else if (&bb == cfg.exit)
+    ss << "; exit\n";
+
+  ss << "bb_" << bb.id << ":\n";
+
+  for (const ir_instruction &inst : bb.instructions)
+    std::visit(emitter, inst);
+
+  if (&bb == cfg.exit) {
+    ss << "xor eax,eax\n";
+    ss << "ret\n";
+  }
 }
 
-std::string while_statement::get_code() const {
-  // Elide the loop completely if possible.
-  if (::is_constant_expression(*condition) &&
-      ::get_value(*condition) == false) {
-    return "";
-  }
-  save_and_restore<bool> Guard(do_constant_propagation, false);
-  std::string begin_label = next_label();
-  std::string end_label = next_label();
+void recursively_emit_basicblock(std::ostream &ss, const cfg &cfg,
+                                 const symbols &syms, const basicblock &bb,
+                                 std::set<bb_idx> &processed) {
+  auto [_, succeeded] = processed.insert(bb.id);
+  if (!succeeded)
+    return;
+
+  emit_basicblock(ss, cfg, syms, bb);
+  for (const basicblock *child : bb.children)
+    recursively_emit_basicblock(ss, cfg, syms, *child, processed);
+}
+
+} // namespace
+
+std::string codegen(const cfg &cfg, const symbols &syms) {
   std::stringstream ss;
-  ss << begin_label << ":\n";
-  ss << ::get_code(*condition);
-  ss << "cmp al,1\n";
-  ss << "jne near " << end_label << '\n';
-  ss << ::get_code(body);
-  ss << "jmp " << begin_label << '\n';
-  ss << end_label << ":\n";
+  ss << "global main\n"
+        "extern write_natural\n"
+        "extern read_natural\n"
+        "extern write_boolean\n"
+        "extern read_boolean\n\n"
+        "section .bss\n";
+  symbols_to_asm{ss}(syms);
+
+  ss << "\nsection .text\nmain:\n";
+  std::set<bb_idx> processed;
+  recursively_emit_basicblock(ss, cfg, syms, *cfg.entry, processed);
   return ss.str();
 }

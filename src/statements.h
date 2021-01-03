@@ -101,4 +101,10 @@ public:
   statements body;
 };
 
+struct ast {
+  std::string prog_name;
+  symbols syms;
+  statements stmts;
+};
+
 #endif // STATEMENTS_H

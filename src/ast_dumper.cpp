@@ -5,6 +5,26 @@
 #include <iostream>
 #include <variant>
 
+std::ostream &ast_dumper::operator()(const ast &x) const noexcept {
+  ast_dumper sub_dumper{os, indent + 2};
+  os << "program " << x.prog_name << '\n';
+  sub_dumper(x.syms);
+  os << "begin\n";
+  sub_dumper(x.stmts);
+  os << "end\n";
+  return os;
+}
+
+std::ostream &ast_dumper::operator()(const symbols &xs) const noexcept {
+  for (const auto &pair : xs) {
+    const symbol &sym = pair.second;
+    repeat(os, ' ', indent)
+        << (sym.symbol_type == boolean ? "boolean" : "natural") << ' '
+        << sym.name << '\n';
+  }
+  return os;
+}
+
 std::ostream &ast_dumper::operator()(const statements &xs) const noexcept {
   for (const statement &x : xs)
     std::visit(*this, x);

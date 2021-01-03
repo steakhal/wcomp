@@ -13,12 +13,12 @@ expression_dumper::operator()(const expression &x) const noexcept {
 
 std::ostream &
 expression_dumper::operator()(const number_expression &x) const noexcept {
-  return os << x.get_value();
+  return os << x.value;
 }
 
 std::ostream &
 expression_dumper::operator()(const boolean_expression &x) const noexcept {
-  return os << (x.get_value() ? "true" : "false");
+  return os << (x.value ? "true" : "false");
 }
 
 std::ostream &

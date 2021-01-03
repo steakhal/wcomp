@@ -1,6 +1,7 @@
 [requires]
 bison/3.7.1
 flex/2.6.4
+cli11/1.9.1
 
 [build_requires]
 nasm/2.15.05
