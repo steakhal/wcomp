@@ -1,8 +1,21 @@
 #include "cfg.h"
 
+#include <cassert>
+#include <variant>
+
 void basicblock::add_child(basicblock *child) { children.push_back(child); }
 
 void basicblock::add_ir_instruction(ir_instruction inst) {
+  if (!instructions.empty()) {
+    const auto &last = instructions.back();
+    const bool last_was_controlflow_instruction =
+        std::holds_alternative<selector>(last) ||
+        std::holds_alternative<jump>(last);
+    assert(
+        !last_was_controlflow_instruction &&
+        "Can not add further instructions after a controlf-flow instruction.");
+  }
+
   // Register jump targets.
   std::visit(overloaded{
                  [&](auto &x) {},
