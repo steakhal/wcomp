@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <memory>
 #include <variant>
 
 void basicblock::add_ir_instruction(ir_instruction inst) {
@@ -32,6 +33,9 @@ bool basicblock::operator<(const basicblock &other) const noexcept {
 
 basicblock *cfg::create_bb() {
   const auto idx = next_bb_idx++;
-  auto [it, _] = blocks.emplace(std::make_pair(idx, basicblock{idx}));
-  return &it->second;
+  assert(std::find_if(blocks.begin(), blocks.end(), [idx](const auto &x) {
+           return x->id == idx;
+         }) == blocks.end());
+  blocks.push_back(std::make_unique<basicblock>(idx));
+  return blocks.back().get();
 }

@@ -2,6 +2,8 @@
 #include "utility.h"
 
 #include <cassert>
+#include <memory>
+#include <random>
 #include <set>
 #include <string_view>
 #include <variant>
@@ -26,10 +28,10 @@ std::unique_ptr<expression> create_expr(Ts &&... args) {
 
 void flatten(symbols &syms, cfg &graph) {
   std::vector targets = [&graph] {
-    std::vector<std::pair<bb_idx, basicblock *>> res;
+    std::vector<basicblock *> res;
     res.reserve(graph.blocks.size());
-    for (auto &pair : graph.blocks)
-      res.push_back(std::make_pair(pair.first, &pair.second));
+    for (auto &block : graph.blocks)
+      res.push_back(block.get());
     return res;
   }();
 
@@ -47,13 +49,6 @@ void flatten(symbols &syms, cfg &graph) {
   syms.insert(std::make_pair(bb_selector.name, bb_selector));
   id_expression selector_var{invalid_lineno, /*name=*/bb_selector.name};
 
-  // TODO: Remove debug dumps.
-  std::cerr << "bb_selector: " << bb_selector.name << '\n';
-  std::cerr << "targets: ";
-  for (const auto [id, _] : targets)
-    std::cerr << id << ' ';
-  std::cerr << '\n';
-
   // NewEntry:
   // selector := original_entry
   // dispatch!
@@ -67,8 +62,7 @@ void flatten(symbols &syms, cfg &graph) {
   graph.entry = new_entry;
 
   // Replace the (last) cfg-instruction in each basic block.
-  for (auto &pair : targets) {
-    basicblock *target = pair.second;
+  for (basicblock *target : targets) {
     if (target->instructions.empty())
       continue;
 
@@ -97,6 +91,13 @@ void flatten(symbols &syms, cfg &graph) {
   }
 
   // Add the IR instruction for the switch to the dispatcher basic block.
-  switch_dispatcher->add_ir_instruction(
-      switcher{selector_var, std::move(targets)});
+  {
+    std::vector<std::pair<bb_idx, basicblock *>> target_mapping;
+    target_mapping.reserve(targets.size());
+    for (basicblock *bb : targets)
+      target_mapping.push_back(std::make_pair(bb->id, bb));
+
+    switch_dispatcher->add_ir_instruction(
+        switcher{selector_var, std::move(target_mapping)});
+  }
 }

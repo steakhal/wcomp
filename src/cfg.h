@@ -48,7 +48,7 @@ public:
 
 class basicblock {
 public:
-  const bb_idx id;
+  bb_idx id;
   std::vector<ir_instruction> instructions;
 
   explicit basicblock(bb_idx id) : id{id} {}
@@ -61,7 +61,7 @@ public:
 
 class cfg {
 public:
-  std::map<bb_idx, basicblock> blocks;
+  std::vector<std::unique_ptr<basicblock>> blocks;
   bb_idx next_bb_idx = 0;
   basicblock *entry = create_bb();
   basicblock *exit = entry;
