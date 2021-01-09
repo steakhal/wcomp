@@ -31,14 +31,33 @@ function(add_wcomp_test)
         && diff ${tmp}.output ${add_wcomp_test_EXPECTED} 1>&2"
     COMMAND_EXPAND_LISTS
   )
+  
   add_test(
-    NAME test_${add_wcomp_test_NAME}_interpret
+    NAME test_ultra_${add_wcomp_test_NAME}_compile
     COMMAND sh -c "\
-        $<TARGET_FILE:wcomp> -i ${add_wcomp_test_SOURCE} < ${add_wcomp_test_INPUT} > ${tmp}.output \
+        $<TARGET_FILE:wcomp> -c ${add_wcomp_test_SOURCE}                                    \
+          --flatten-cfg                                                                     \
+          --remap-basic-block-ids=42                                                        \
+          --random-remap-basic-blocks-seed=42                                               \
+          --random-basic-block-serialization-seed=42                                        \
+          --xor-encode-constants                                                            \
+        > ${tmp}.asm                                                                        \
+        && nasm -felf ${tmp}.asm -o ${tmp}.o                                                \
+        && ${CMAKE_C_COMPILER} -m32 ${tmp}.o ${CMAKE_CURRENT_SOURCE_DIR}/io.c -o ${tmp}.out \
+        && ${tmp}.out < ${add_wcomp_test_INPUT} > ${tmp}.output                             \
         && diff ${tmp}.output ${add_wcomp_test_EXPECTED} 1>&2"
     COMMAND_EXPAND_LISTS
   )
-  # TODO: Add dependency to build the wcomp before the test.
+
+  # TODO: Enable interpretation when implemented.
+  #add_test(
+  #  NAME test_${add_wcomp_test_NAME}_interpret
+  #  COMMAND sh -c "\
+  #      $<TARGET_FILE:wcomp> -i ${add_wcomp_test_SOURCE} < ${add_wcomp_test_INPUT} > ${tmp}.output \
+  #      && diff ${tmp}.output ${add_wcomp_test_EXPECTED} 1>&2"
+  #  COMMAND_EXPAND_LISTS
+  #)
+  ## TODO: Add dependency to build the wcomp before the test.
 endfunction()
 
 

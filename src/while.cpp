@@ -56,7 +56,9 @@ int main(int argc, char **argv) {
   interpret->excludes(compile);
 
   bool flatten_cfg{false};
+  bool encode_constants{false};
   std::optional<std::size_t> remap_bb_ids_seed;
+  std::optional<std::size_t> serialization_seed;
 
   bool dump_ast{false};
   bool dump_cfg_text{false};
@@ -77,9 +79,18 @@ int main(int argc, char **argv) {
                "Remap basic block ids.")
       ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
 
+  app.add_flag("--xor-encode-constants", encode_constants,
+               "Xor encode constants.")
+      ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
+
   app.add_option(
       "--random-remap-basic-blocks-seed", remap_bb_ids_seed,
       "Randomize the identifier of the basic blocks in the control-flow graph. "
+      "Specify the seed for the pseudo-random sequence. -1 means random seed.");
+
+  app.add_option(
+      "--random-basic-block-serialization-seed", serialization_seed,
+      "Randomize the order of the basic blocks when emitting assembly."
       "Specify the seed for the pseudo-random sequence. -1 means random seed.");
 
   CLI11_PARSE(app, argc, argv);
@@ -122,7 +133,8 @@ int main(int argc, char **argv) {
     text_cfg_dumper{std::cerr}(graph);
 
   if (compile->count() == 1) {
-    std::cout << codegen(graph, code.syms);
+    std::cout << codegen(graph, code.syms, serialization_seed,
+                         encode_constants);
   } else {
     //::execute(ast);
   }

@@ -4,8 +4,11 @@
 #include "typecheck.h"
 #include "utility.h"
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <optional>
+#include <random>
 #include <set>
 #include <sstream>
 #include <string_view>
@@ -87,19 +90,42 @@ std::string_view get_type_name(type ty) {
   return ty == boolean ? "boolean" : "natural";
 }
 
-class ir_to_asm {
+class expr_to_asm {
+protected:
   const symbols &syms;
   std::ostream &ss;
+  const basicblock &current_block;
+  const bool encode_constants;
 
 public:
-  ir_to_asm(const symbols &syms, std::ostream &ss) : syms{syms}, ss{ss} {}
+  expr_to_asm(const symbols &syms, std::ostream &ss, bool encode_constants,
+              const basicblock &current_block)
+      : syms{syms}, ss{ss}, current_block{current_block},
+        encode_constants{encode_constants} {}
 
-  // Expressions:
   void operator()(const number_expression &x) const {
-    ss << "mov eax," << x.value << '\n';
+    if (encode_constants) {
+      const auto half_id = current_block.id / 2;
+      const bb_idx encoded = current_block.id ^ (x.value + half_id);
+      ss << "mov eax, " << encoded << '\n';
+      ss << "mov ebx, " << current_block.id << '\n';
+      ss << "xor eax, ebx\n";
+      ss << "sub eax, " << half_id << "; encoded " << x.value << "\n";
+    } else {
+      ss << "mov eax," << x.value << '\n';
+    }
   }
   void operator()(const boolean_expression &x) const {
-    ss << "mov al," << (x.value ? 1 : 0) << '\n';
+    if (encode_constants) {
+      const auto half_id = current_block.id / 2;
+      const bb_idx encoded = current_block.id ^ (x.value + half_id);
+      ss << "mov eax, " << encoded << '\n';
+      ss << "mov ebx, " << current_block.id << '\n';
+      ss << "xor eax, ebx\n";
+      ss << "sub eax, " << half_id << "; encoded " << x.value << "\n";
+    } else {
+      ss << "mov eax," << x.value << '\n';
+    }
   }
   void operator()(const id_expression &x) const {
     const auto it = syms.find(x.name);
@@ -121,8 +147,17 @@ public:
     std::visit(*this, *x.operand);
     ss << "xor al,1\n";
   }
+};
 
-  // Statements:
+class ir_to_asm : private expr_to_asm {
+public:
+  ir_to_asm(const symbols &syms, std::ostream &ss, bool encode_constants,
+            const basicblock &current_block)
+      : expr_to_asm{syms, ss, encode_constants, current_block} {}
+
+  using expr_to_asm::operator();
+
+  // Basic ir instructions.
   void operator()(const assign_statement &x) const {
     std::visit(*this, *x.right);
     const auto it = syms.find(x.left);
@@ -168,7 +203,8 @@ public:
     ss << "jmp bb_" << x.target.id << '\n';
   }
   void operator()(const switcher &x) const {
-    operator()(x.var); // Load var to eax.
+    // Load var to eax.
+    operator()(x.var);
 
     assert(!x.branches.empty());
     for (const auto &pair : x.branches) {
@@ -180,11 +216,11 @@ public:
 };
 
 void emit_basicblock(std::ostream &ss, const cfg &cfg, const symbols &syms,
-                     const basicblock &bb) {
-  ir_to_asm emitter{syms, ss};
+                     const basicblock &bb, bool encode_constants) {
+  ir_to_asm emitter{syms, ss, encode_constants, bb};
 
   if (&bb == cfg.entry)
-    ss << "; entry\n";
+    ss << "; entry\nmain:\n";
   else if (&bb == cfg.exit)
     ss << "; exit\n";
 
@@ -199,40 +235,46 @@ void emit_basicblock(std::ostream &ss, const cfg &cfg, const symbols &syms,
   }
 }
 
-void recursively_emit_basicblock(std::ostream &ss, const cfg &cfg,
+void recursively_emit_basicblock(std::vector<std::string> &out, const cfg &cfg,
                                  const symbols &syms, const basicblock &bb,
-                                 std::set<bb_idx> &processed) {
+                                 std::set<bb_idx> &processed,
+                                 bool encode_constants) {
   auto [_, succeeded] = processed.insert(bb.id);
   if (!succeeded)
     return;
 
-  emit_basicblock(ss, cfg, syms, bb);
+  std::stringstream ss;
+  emit_basicblock(ss, cfg, syms, bb, encode_constants);
+  out.push_back(std::move(ss).str());
 
   if (bb.instructions.empty())
     return;
 
-  std::visit(overloaded{[&](const auto &x) {},
-                        [&](const selector &x) {
-                          recursively_emit_basicblock(ss, cfg, syms,
-                                                      x.true_branch, processed);
-                          recursively_emit_basicblock(
-                              ss, cfg, syms, x.false_branch, processed);
-                        },
-                        [&](const jump &x) {
-                          recursively_emit_basicblock(ss, cfg, syms, x.target,
-                                                      processed);
-                        },
-                        [&](const switcher &x) {
-                          for (const auto [_, child] : x.branches)
-                            recursively_emit_basicblock(ss, cfg, syms, *child,
-                                                        processed);
-                        }},
-             bb.instructions.back());
+  std::visit(
+      overloaded{[&](const auto &x) {},
+                 [&](const selector &x) {
+                   recursively_emit_basicblock(out, cfg, syms, x.true_branch,
+                                               processed, encode_constants);
+                   recursively_emit_basicblock(out, cfg, syms, x.false_branch,
+                                               processed, encode_constants);
+                 },
+                 [&](const jump &x) {
+                   recursively_emit_basicblock(out, cfg, syms, x.target,
+                                               processed, encode_constants);
+                 },
+                 [&](const switcher &x) {
+                   for (const auto [_, child] : x.branches)
+                     recursively_emit_basicblock(out, cfg, syms, *child,
+                                                 processed, encode_constants);
+                 }},
+      bb.instructions.back());
 }
 
 } // namespace
 
-std::string codegen(const cfg &cfg, const symbols &syms) {
+std::string codegen(const cfg &cfg, const symbols &syms,
+                    std::optional<std::size_t> serialization_seed,
+                    bool encode_constants) {
   std::stringstream ss;
   ss << "global main\n"
         "extern write_natural\n"
@@ -242,8 +284,24 @@ std::string codegen(const cfg &cfg, const symbols &syms) {
         "section .bss\n";
   symbols_to_asm{ss}(syms);
 
-  ss << "\nsection .text\nmain:\n";
+  ss << "\nsection .text\n";
   std::set<bb_idx> processed;
-  recursively_emit_basicblock(ss, cfg, syms, *cfg.entry, processed);
+  std::vector<std::string> code_of_basicblocks;
+  recursively_emit_basicblock(code_of_basicblocks, cfg, syms, *cfg.entry,
+                              processed, encode_constants);
+
+  if (serialization_seed.has_value()) {
+    if (serialization_seed.value() == -1) {
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::shuffle(code_of_basicblocks.begin(), code_of_basicblocks.end(), gen);
+    } else {
+      std::mt19937 gen(serialization_seed.value());
+      std::shuffle(code_of_basicblocks.begin(), code_of_basicblocks.end(), gen);
+    }
+  }
+
+  for (std::string &code : code_of_basicblocks)
+    ss << std::move(code);
   return ss.str();
 }
