@@ -1,5 +1,5 @@
 # wcomp
-Obfuscicating compiler for WHILE
+Obfuscating compiler for WHILE
 
 This project serves education purposes only.
 
