@@ -16,8 +16,8 @@ cd build
 # Downloads the required nasm and cmake for this project.
 conan install .. --build=missing 
 source activate_run.sh  # Appends cmake and nasm to your PATH envvar.
-cmake ..
-make && make test
+cmake .. -GNinja
+ninja && ninja test
 ```
 
 ## Example usage:
