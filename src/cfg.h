@@ -9,11 +9,14 @@
 #include <variant>
 #include <vector>
 
+using bb_idx = std::size_t;
+
 // any expression; any statement except while_statement
 using ir_instruction =
     std::variant<number_expression, boolean_expression, id_expression,
                  binop_expression, not_expression, assign_statement,
-                 read_statement, write_statement, class selector, class jump>;
+                 read_statement, write_statement, class selector, class jump,
+                 class switcher, class cassign>;
 
 class basicblock;
 
@@ -29,19 +32,29 @@ public:
   basicblock &target;
 };
 
-using bb_idx = std::size_t;
+class switcher {
+public:
+  id_expression var;
+  std::vector<std::pair<bb_idx, basicblock *>> branches;
+};
+
+class cassign {
+public:
+  id_expression var;
+  std::unique_ptr<expression> condition;
+  bb_idx true_value;
+  bb_idx false_value;
+};
 
 class basicblock {
-  void add_child(basicblock *child);
-
 public:
   const bb_idx id;
   std::vector<ir_instruction> instructions;
-  std::vector<basicblock *> children;
 
   explicit basicblock(bb_idx id) : id{id} {}
 
   void add_ir_instruction(ir_instruction inst);
+  ir_instruction pop_last_ir_instruction();
 
   bool operator<(const basicblock &other) const noexcept;
 };
@@ -54,7 +67,6 @@ public:
   basicblock *exit = entry;
 
   basicblock *create_bb();
-  void remove_bb(basicblock *bb);
 };
 
 #endif // CFG_H

@@ -30,16 +30,16 @@ public:
   std::ostream &operator()(const write_statement &x) const noexcept;
   std::ostream &operator()(const selector &x) const noexcept;
   std::ostream &operator()(const jump &x) const noexcept;
+  std::ostream &operator()(const switcher &x) const noexcept;
+  std::ostream &operator()(const cassign &x) const noexcept;
 };
 
 class dot_cfg_dumper : private expression_dumper {
   std::ostream &os;
   std::set<bb_idx> processed;
-  const unsigned indent;
 
 public:
-  explicit dot_cfg_dumper(std::ostream &os, unsigned initial_indent = 0)
-      : expression_dumper{os, initial_indent}, os{os}, indent{initial_indent} {}
+  explicit dot_cfg_dumper(std::ostream &os) : expression_dumper{os}, os{os} {}
 
   using expression_dumper::operator();
 
@@ -52,6 +52,8 @@ public:
   std::ostream &operator()(const write_statement &x) const noexcept;
   std::ostream &operator()(const selector &x) const noexcept;
   std::ostream &operator()(const jump &x) const noexcept;
+  std::ostream &operator()(const switcher &x) const noexcept;
+  std::ostream &operator()(const cassign &x) const noexcept;
 };
 
 #endif // CFG_DUMPER_H

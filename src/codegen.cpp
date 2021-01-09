@@ -148,6 +148,15 @@ public:
     ss << "add esp,4\n";
   }
 
+  void operator()(const cassign &x) const {
+    std::visit(*this, *x.condition);
+    ss << "cmp al,1\n";
+    ss << "mov eax," << x.false_value << '\n';
+    ss << "mov ebx, " << x.true_value << '\n';
+    ss << "cmove eax, ebx\n";
+    ss << "mov [var_" << x.var.name << "], eax\n";
+  }
+
   // Control-flow:
   void operator()(const selector &x) const {
     std::visit(*this, *x.condition);
@@ -157,6 +166,16 @@ public:
   }
   void operator()(const jump &x) const {
     ss << "jmp bb_" << x.target.id << '\n';
+  }
+  void operator()(const switcher &x) const {
+    operator()(x.var); // Load var to eax.
+
+    assert(!x.branches.empty());
+    for (const auto &pair : x.branches) {
+      ss << "mov ecx, " << pair.first << '\n';
+      ss << "cmp eax,ecx\n";
+      ss << "je bb_" << pair.second->id << '\n';
+    }
   }
 };
 
@@ -188,8 +207,27 @@ void recursively_emit_basicblock(std::ostream &ss, const cfg &cfg,
     return;
 
   emit_basicblock(ss, cfg, syms, bb);
-  for (const basicblock *child : bb.children)
-    recursively_emit_basicblock(ss, cfg, syms, *child, processed);
+
+  if (bb.instructions.empty())
+    return;
+
+  std::visit(overloaded{[&](const auto &x) {},
+                        [&](const selector &x) {
+                          recursively_emit_basicblock(ss, cfg, syms,
+                                                      x.true_branch, processed);
+                          recursively_emit_basicblock(
+                              ss, cfg, syms, x.false_branch, processed);
+                        },
+                        [&](const jump &x) {
+                          recursively_emit_basicblock(ss, cfg, syms, x.target,
+                                                      processed);
+                        },
+                        [&](const switcher &x) {
+                          for (const auto [_, child] : x.branches)
+                            recursively_emit_basicblock(ss, cfg, syms, *child,
+                                                        processed);
+                        }},
+             bb.instructions.back());
 }
 
 } // namespace

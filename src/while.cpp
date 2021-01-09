@@ -5,6 +5,7 @@
 #include "ast_to_cfg.h"
 #include "cfg.h"
 #include "cfg_dumper.h"
+#include "cfg_transformer.h"
 #include "codegen.h"
 #include "expressions.h"
 #include "statements.h"
@@ -53,6 +54,8 @@ int main(int argc, char **argv) {
   compile->excludes(interpret);
   interpret->excludes(compile);
 
+  bool flatten_cfg{false};
+
   bool dump_ast{false};
   bool dump_cfg_text{false};
   bool dump_cfg_dot{false};
@@ -63,6 +66,10 @@ int main(int argc, char **argv) {
       ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
   app.add_flag("--dump-cfg-dot", dump_cfg_dot,
                "Dumps the Control-flow graph in Graphwiz dot format.")
+      ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
+
+  app.add_flag("--flatten-cfg", flatten_cfg,
+               "Flatten the control-flow graph.")
       ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
 
   CLI11_PARSE(app, argc, argv);
@@ -84,6 +91,9 @@ int main(int argc, char **argv) {
     ast_dumper{std::cerr}(code);
 
   cfg graph = ast_to_cfg(std::move(code.stmts));
+
+  if (flatten_cfg)
+    flatten(code.syms, graph);
 
   if (dump_cfg_dot)
     dot_cfg_dumper{std::cerr}(graph);

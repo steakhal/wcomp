@@ -11,7 +11,7 @@ std::ostream &text_cfg_dumper::operator()(const cfg &x) noexcept {
   os << "Exit:  " << x.exit->id << '\n';
 
   // Start dumping from  the entry block.
-  (*this)(*x.entry);
+  operator()(*x.entry);
   return os;
 }
 
@@ -24,8 +24,21 @@ std::ostream &text_cfg_dumper::operator()(const basicblock &x) noexcept {
   text_cfg_dumper sub_dumper{os, indent + 2};
   for (const auto &inst : x.instructions)
     sub_dumper(inst);
-  for (const basicblock *child : x.children)
-    (*this)(*child);
+
+  if (x.instructions.empty())
+    return os;
+
+  std::visit(overloaded{[&](const auto &) {},
+                        [&](const selector &x) {
+                          operator()(x.true_branch);
+                          operator()(x.false_branch);
+                        },
+                        [&](const jump &x) { operator()(x.target); },
+                        [&](const switcher &x) {
+                          for (const auto [_, child] : x.branches)
+                            operator()(*child);
+                        }},
+             x.instructions.back());
   return os;
 }
 
@@ -66,6 +79,24 @@ std::ostream &text_cfg_dumper::operator()(const jump &x) const noexcept {
          << "jump to basicblock " << x.target.id << '\n';
 }
 
+std::ostream &text_cfg_dumper::operator()(const switcher &x) const noexcept {
+  repeat(os, ' ', indent) << "switch on variable " << x.var.name << " {\n";
+  for (const auto &pair : x.branches) {
+    repeat(os, ' ', indent + 2)
+        << pair.first << " -> bb_" << pair.second->id << '\n';
+  }
+  repeat(os, ' ', indent) << "}\n";
+  return os;
+}
+
+std::ostream &text_cfg_dumper::operator()(const cassign &x) const noexcept {
+  repeat(os, ' ', indent) << "assign " << x.true_value << " to " << x.var.name
+                          << " if ";
+  std::visit(*this, *x.condition);
+  os << " else " << x.false_value << '\n';
+  return os;
+}
+
 // Dot
 
 std::ostream &dot_cfg_dumper::operator()(const cfg &x) noexcept {
@@ -90,19 +121,33 @@ std::ostream &dot_cfg_dumper::operator()(const basicblock &x) noexcept {
     sub_dumper(inst);
   os << "\"]\n";
 
-  assert(x.children.size() <= 2);
-  if (x.children.size() == 2) {
-    os << "  bb_" << x.id << " -> "
-       << "bb_" << x.children[0]->id << "[label=\"true\",color=darkgreen]\n";
-    (*this)(*x.children[0]);
-    os << "  bb_" << x.id << " -> "
-       << "bb_" << x.children[1]->id << "[label=\"false\",color=red]\n";
-    (*this)(*x.children[1]);
-  } else if (x.children.size() == 1) {
-    os << "  bb_" << x.id << " -> "
-       << "bb_" << x.children[0]->id << "\n";
-    (*this)(*x.children[0]);
-  }
+  if (x.instructions.empty())
+    return os;
+
+  std::visit(overloaded{[&](const auto &) {},
+                        [&](const selector &y) {
+                          os << "  bb_" << x.id << " -> "
+                             << "bb_" << y.true_branch.id
+                             << "[label=\"true\",color=darkgreen]\n";
+                          operator()(y.true_branch);
+                          os << "  bb_" << x.id << " -> "
+                             << "bb_" << y.false_branch.id
+                             << "[label=\"false\",color=red]\n";
+                          operator()(y.false_branch);
+                        },
+                        [&](const jump &y) {
+                          os << "  bb_" << x.id << " -> "
+                             << "bb_" << y.target.id << "\n";
+                          operator()(y.target);
+                        },
+                        [&](const switcher &y) {
+                          for (const auto [child_id, _] : y.branches)
+                            os << "  bb_" << x.id << " -> "
+                               << "bb_" << child_id << "\n";
+                          for (const auto [_, child] : y.branches)
+                            operator()(*child);
+                        }},
+             x.instructions.back());
   return os;
 }
 
@@ -140,4 +185,20 @@ std::ostream &dot_cfg_dumper::operator()(const selector &x) const noexcept {
 
 std::ostream &dot_cfg_dumper::operator()(const jump &x) const noexcept {
   return os << "jump to bb_" << x.target.id << "\\l";
+}
+
+std::ostream &dot_cfg_dumper::operator()(const switcher &x) const noexcept {
+  os << "switch on variable " << x.var.name << "{\\l";
+  for (const auto &pair : x.branches) {
+    os << "  " << pair.first << " -> bb_" << pair.second->id << "\\l";
+  }
+  os << "}\\l";
+  return os;
+}
+
+std::ostream &dot_cfg_dumper::operator()(const cassign &x) const noexcept {
+  os << "assign " << x.true_value << " to " << x.var.name << " if ";
+  std::visit(*this, *x.condition);
+  os << ' ' << " else " << x.false_value << "\\l";
+  return os;
 }

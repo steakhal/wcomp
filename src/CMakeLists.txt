@@ -22,6 +22,7 @@ add_executable(wcomp
   ast_dumper.cpp
   cfg_dumper.cpp
   ast_to_cfg.cpp
+  cfg_transformer.cpp
 )
 target_link_libraries(wcomp PRIVATE lexer parser CONAN_PKG::cli11)
 target_include_directories(wcomp PRIVATE ".")
