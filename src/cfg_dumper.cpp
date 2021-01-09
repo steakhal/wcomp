@@ -35,8 +35,8 @@ std::ostream &text_cfg_dumper::operator()(const basicblock &x) noexcept {
                         },
                         [&](const jump &x) { operator()(x.target); },
                         [&](const switcher &x) {
-                          for (const auto [_, child] : x.branches)
-                            operator()(*child);
+                          for (const basicblock *target : x.branches)
+                            operator()(*target);
                         }},
              x.instructions.back());
   return os;
@@ -81,9 +81,9 @@ std::ostream &text_cfg_dumper::operator()(const jump &x) const noexcept {
 
 std::ostream &text_cfg_dumper::operator()(const switcher &x) const noexcept {
   repeat(os, ' ', indent) << "switch on variable " << x.var.name << " {\n";
-  for (const auto &pair : x.branches) {
+  for (const basicblock *target : x.branches) {
     repeat(os, ' ', indent + 2)
-        << pair.first << " -> bb_" << pair.second->id << '\n';
+        << target->id << " -> bb_" << target->id << '\n';
   }
   repeat(os, ' ', indent) << "}\n";
   return os;
@@ -104,7 +104,7 @@ std::ostream &dot_cfg_dumper::operator()(const cfg &x) noexcept {
   os << "  node [shape=\"box\",style=filled];\n";
 
   // Start dumping from  the entry block.
-  (*this)(*x.entry);
+  operator()(*x.entry);
   os << "}\n";
   return os;
 }
@@ -141,11 +141,11 @@ std::ostream &dot_cfg_dumper::operator()(const basicblock &x) noexcept {
                           operator()(y.target);
                         },
                         [&](const switcher &y) {
-                          for (const auto [child_id, _] : y.branches)
+                          for (const basicblock *target : y.branches)
                             os << "  bb_" << x.id << " -> "
-                               << "bb_" << child_id << "\n";
-                          for (const auto [_, child] : y.branches)
-                            operator()(*child);
+                               << "bb_" << target->id << "\n";
+                          for (const basicblock *target : y.branches)
+                            operator()(*target);
                         }},
              x.instructions.back());
   return os;
@@ -189,8 +189,8 @@ std::ostream &dot_cfg_dumper::operator()(const jump &x) const noexcept {
 
 std::ostream &dot_cfg_dumper::operator()(const switcher &x) const noexcept {
   os << "switch on variable " << x.var.name << "{\\l";
-  for (const auto &pair : x.branches) {
-    os << "  " << pair.first << " -> bb_" << pair.second->id << "\\l";
+  for (const basicblock *target : x.branches) {
+    os << "  " << target->id << " -> bb_" << target->id << "\\l";
   }
   os << "}\\l";
   return os;

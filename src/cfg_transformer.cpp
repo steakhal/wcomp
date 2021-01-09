@@ -91,13 +91,6 @@ void flatten(symbols &syms, cfg &graph) {
   }
 
   // Add the IR instruction for the switch to the dispatcher basic block.
-  {
-    std::vector<std::pair<bb_idx, basicblock *>> target_mapping;
-    target_mapping.reserve(targets.size());
-    for (basicblock *bb : targets)
-      target_mapping.push_back(std::make_pair(bb->id, bb));
-
-    switch_dispatcher->add_ir_instruction(
-        switcher{selector_var, std::move(target_mapping)});
-  }
+  switch_dispatcher->add_ir_instruction(
+      switcher{selector_var, std::move(targets)});
 }

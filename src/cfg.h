@@ -35,7 +35,7 @@ public:
 class switcher {
 public:
   id_expression var;
-  std::vector<std::pair<bb_idx, basicblock *>> branches;
+  std::vector<basicblock *> branches;
 };
 
 class cassign {

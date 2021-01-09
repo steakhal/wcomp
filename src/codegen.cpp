@@ -207,10 +207,10 @@ public:
     operator()(x.var);
 
     assert(!x.branches.empty());
-    for (const auto &pair : x.branches) {
-      ss << "mov ecx, " << pair.first << '\n';
+    for (const basicblock *target : x.branches) {
+      ss << "mov ecx, " << target->id << '\n';
       ss << "cmp eax,ecx\n";
-      ss << "je bb_" << pair.second->id << '\n';
+      ss << "je bb_" << target->id << '\n';
     }
   }
 };
@@ -263,8 +263,8 @@ void recursively_emit_basicblock(std::vector<std::string> &out, const cfg &cfg,
                                                processed, encode_constants);
                  },
                  [&](const switcher &x) {
-                   for (const auto [_, child] : x.branches)
-                     recursively_emit_basicblock(out, cfg, syms, *child,
+                   for (const basicblock *target : x.branches)
+                     recursively_emit_basicblock(out, cfg, syms, *target,
                                                  processed, encode_constants);
                  }},
       bb.instructions.back());

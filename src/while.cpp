@@ -113,9 +113,6 @@ int main(int argc, char **argv) {
 
   cfg graph = ast_to_cfg(std::move(code.stmts));
 
-  if (flatten_cfg)
-    flatten(code.syms, graph);
-
   if (remap_bb_ids_seed.has_value()) {
     if (remap_bb_ids_seed.value() == -1) {
       std::random_device rd;
@@ -126,6 +123,9 @@ int main(int argc, char **argv) {
       remap_block_ids(graph, gen);
     }
   }
+
+  if (flatten_cfg)
+    flatten(code.syms, graph);
 
   if (dump_cfg_dot)
     dot_cfg_dumper{std::cerr}(graph);
